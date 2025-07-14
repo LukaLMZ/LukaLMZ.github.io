@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Осколки Нас</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700&display=swap');
+
     * {
       box-sizing: border-box;
     }
+
     body {
       margin: 0;
       padding: 0;
@@ -17,8 +19,10 @@
       color: #e0e0e0;
       overflow-x: hidden;
     }
+
     .splash {
       height: 100vh;
+      width: 100vw;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -26,47 +30,67 @@
       text-align: center;
       background: radial-gradient(ellipse at center, #0d0d0d 0%, #1a1a1a 100%);
       transition: opacity 1.5s ease;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10;
     }
+
     .fade-text {
       font-size: 2rem;
       color: #ffffff;
       animation: fadeOut 3s forwards;
     }
+
     @keyframes fadeOut {
       0% { opacity: 1; }
       70% { opacity: 1; }
       100% { opacity: 0; display: none; }
     }
+
     .title {
       font-size: 2.2rem;
       margin-top: 1.5rem;
       color: #93e0ff;
       opacity: 0;
-      animation: fadeIn 5s ease-in forwards;
-      animation-delay: 2s;
+      animation: fadeIn 4s ease-in forwards;
+      animation-delay: 1.2s;
     }
+
     .subtitle {
       font-size: 1rem;
       color: #aaa;
       margin-top: 0.5rem;
       opacity: 0;
-      animation: fadeIn 6s ease-in forwards;
-      animation-delay: 3s;
+      animation: fadeIn 4s ease-in forwards;
+      animation-delay: 1.8s;
     }
+
+    @keyframes fadeIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
     #main {
-      display: none;
+      display: block;
+      visibility: hidden;
+      pointer-events: none;
       padding: 3rem;
       opacity: 0;
       transition: opacity 1.5s ease;
     }
+
     .visible {
-      display: block !important;
+      visibility: visible;
+      pointer-events: auto;
       opacity: 1;
     }
+
     h2, h3 {
       margin-top: 2rem;
       color: #93e0ff;
     }
+
     p {
       line-height: 1.7;
       margin-top: 1rem;
@@ -215,8 +239,8 @@
           document.getElementById('splash').style.display = 'none';
           document.getElementById('main').classList.add('visible');
         }, 1500);
-      }, 3000); // 3 секунды
+      }, 3000);
     };
   </script>
 </body>
-               </html>
+  </html>
