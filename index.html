@@ -70,6 +70,7 @@
       max-width: 90%; /* Ограничивает ширину */
       text-align: center;
       margin: 0 auto; /* Центрирует элемент */
+      animation: typing 5s steps(60, end) forwards, fadeOut 1s forwards 8s; /* Появление и исчезновение */
     }
 
     @keyframes typing {
@@ -81,16 +82,6 @@
       }
     }
 
-    @keyframes blink {
-      50% {
-        border-color: transparent;
-      }
-    }
-
-    .fade-out {
-      animation: fadeOut 2s forwards;
-    }
-
     @keyframes fadeOut {
       to {
         opacity: 0;
@@ -100,10 +91,10 @@
 
     nav {
       background-color: var(--nav-bg);
-      padding: 1rem 2rem;
+      padding: 0.5rem 1.5rem; /* Уменьшены отступы */
       display: flex;
       justify-content: center;
-      gap: 1rem;
+      gap: 0.5rem; /* Уменьшен промежуток между кнопками */
       position: sticky;
       top: 0;
       z-index: 100;
@@ -113,8 +104,8 @@
       background-color: var(--button-bg);
       color: var(--button-text);
       border: none;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
+      padding: 0.4rem 1rem; /* Уменьшены внутренние отступы */
+      font-size: 0.9rem; /* Уменьшен размер шрифта */
       border-radius: 8px;
       cursor: pointer;
       transition: background-color 0.3s, transform 0.2s;
@@ -127,7 +118,7 @@
 
     #toggle-theme {
       position: absolute;
-      right: 1.5rem;
+      right: 1rem;
       top: 1rem;
     }
 
@@ -215,4 +206,4 @@
     }
   </script>
 </body>
-      </html>
+    </html>
