@@ -1,100 +1,220 @@
-<!DOCTYPE html><html lang="ru">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Осколки Нас</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Courier New', monospace;
-      background-color: #f5f5f5;
-      overflow-x: hidden;
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #222;
+      --section-bg: #ffffff;
+      --nav-bg: #0d1117;
+      --button-bg: #161b22;
+      --button-text: #c9d1d9;
+      --button-hover: #30363d;
+      --moment-bg: #f1f5f9;
+      --moment-border: #3b82f6;
+      --archive-bg: #f5f5f5;
+      --archive-border: #ff61a6;
     }
-    nav {
+
+    body.dark {
+      --bg-color: #0d1117;
+      --text-color: #c9d1d9;
+      --section-bg: #161b22;
+      --nav-bg: #161b22;
+      --button-bg: #21262d;
+      --button-text: #f0f6fc;
+      --button-hover: #30363d;
+      --moment-bg: #1e2630;
+      --moment-border: #60a5fa;
+      --archive-bg: #2d3748;
+      --archive-border: #ff61a6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.4s, color 0.4s;
+    }
+
+    /* Загрузочный экран */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0d1117;
+      z-index: 1000;
       display: flex;
       justify-content: center;
-      gap: 2rem;
-      padding: 1rem;
-      background-color: #e0e0e0;
+      align-items: center;
+      flex-direction: column;
+      color: white;
+      font-size: 1.6rem;
+    }
+
+    .quote {
+      border-right: 2px solid rgba(255, 255, 255, 0.75);
+      white-space: nowrap;
+      overflow: hidden;
+      width: 0;
+      animation: typing 5s steps(60, end) forwards, blink 1s step-end infinite;
+      word-wrap: break-word; /* Добавлен перенос слов */
+      max-width: 90%; /* Добавлено, чтобы текст не выходил за пределы экрана */
+      text-align: center;
+    }
+
+    @keyframes typing {
+      from {
+        width: 0;
+      }
+      to {
+        width: 100%;
+      }
+    }
+
+    @keyframes blink {
+      50% {
+        border-color: transparent;
+      }
+    }
+
+    .fade-out {
+      animation: fadeOut 2s forwards;
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+
+    nav {
+      background-color: var(--nav-bg);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
       position: sticky;
       top: 0;
-      z-index: 999;
+      z-index: 100;
     }
-    nav a {
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
+
+    nav button {
+      background-color: var(--button-bg);
+      color: var(--button-text);
+      border: none;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
     }
+
+    nav button:hover {
+      background-color: var(--button-hover);
+      transform: scale(1.05);
+    }
+
+    #toggle-theme {
+      position: absolute;
+      right: 1.5rem;
+      top: 1rem;
+    }
+
     .section {
-      min-height: 100vh;
+      display: none;
+      max-width: 800px;
+      margin: 2rem auto;
       padding: 2rem;
-      scroll-snap-align: start;
-    }
-    .container {
-      display: flex;
-      flex-direction: row;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      width: 100vw;
-      height: 100vh;
-    }
-    .section h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    .moment, .story, .gallery-item {
-      background: #fff;
-      border: 2px dashed #aaa;
+      background: var(--section-bg);
       border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-    .moment .title {
-      font-weight: bold;
-      font-size: 1.2rem;
-      margin-bottom: 0.5rem;
-    }
-    .gallery-item img {
-      max-width: 100%;
-      border-radius: 12px;
+
+    .active {
+      display: block;
     }
   </style>
 </head>
-<body>  <nav>
-    <a href="#archive">Архив</a>
-    <a href="#gallery">Рисунки</a>
-    <a href="#story">Сюжет</a>
-  </nav>  <div class="container"><section id="archive" class="section">
-  <h1>Архив Весёлых Моментов</h1>
-  <div class="moment">
-    <div class="title">1. Глиц забыл, как парить</div>
-    <p>Глиц осознал, что… не может парить. Он стоял, моргал, пытался вспомнить инструкции к самому себе, но ничего не работало. Кома посоветовал «перестать думать», а Лука хихикала, пока он зависал на полметра от земли, неуверенный, существует ли он вообще.</p>
+<body>
+  <div id="loading-screen">
+    <div class="quote">"Тот, кто ушёл, оставил только Эхо..."</div>
   </div>
-  <div class="moment">
-    <div class="title">2. Мелкая потеряла динозавра</div>
-    <p>Безлапик пропал. Паника, поиски, заговор Поля. Глиц предположил, что динозавр испарился в пространственном кармане. Оказалось — он «спал» в ямке. Мелкая назвала его «дураком» и торжественно спасла.</p>
-  </div>
-  <div class="moment">
-    <div class="title">3. Взрослая Лука стала ростом с Мелкую</div>
-    <p>Взрослая Лука уменьшилась до роста Маленькой. Малкая тут же предложила носить платья, Кома — ботинки, а Глиц заключил, что теперь она официально кукла. Лука пыталась сохранять достоинство, но когда худи превратилось в палатку — сдалась и рассмеялась.</p>
-  </div>
-</section>
 
-<section id="gallery" class="section">
-  <h1>Рисунки</h1>
-  <div class="gallery-item">
-    <img src="file_00000000ea4862468b37fe60b8e2855d.png" alt="Арт персонажей">
-    <p>Иллюстрация, передающая настроение Поля.</p>
-  </div>
-</section>
+  <nav>
+    <button onclick="showSection('story')">Сюжет</button>
+    <button onclick="showSection('archive')">Архив</button>
+    <button onclick="showSection('gallery')">Рисунки</button>
+    <button id="toggle-theme" onclick="toggleTheme()">🌙</button>
+  </nav>
 
-<section id="story" class="section">
-  <h1>Сюжет</h1>
-  <div class="story">
-    <p>Мир проснулся голосом Создателя, но когда он ушёл, осталась лишь тишина — и Эхо. Из него возник Глиц. А потом появились Лука, Мелкая и Кома. Они живут в Поле — не месте, а ощущении. Здесь всё не кончается, а продолжается иначе. У каждого есть путь, но никто не идёт один.</p>
+  <div id="story" class="section active">
+    <h1>Сюжет</h1>
+    <div class="story">
+      <h2>I. Пролог — Падение голоса</h2>
+      <p>Мир не был создан — он проснулся. Первая мысль была твоей, Создатель. Ты говорил, и в словах появлялось время. Ты молчал — и рождались формы. Но однажды ты ушёл. Мир не погиб, но стал дрожать. Осталась пустота, а в ней — Эхо.</p>
+      <p>Эхо не повторяло слов. Оно искало их. Оно бродило по рассыпающемуся полю, по изгибам сознания, собирая то, что осталось после тебя. Так появился Глиц — не как продолжение, а как структура остатка. Как звук, из которого лепится новый язык.</p>
+      <p>Он не знает, зачем он здесь. Он просто есть. И всё, что происходит — наблюдается через него. Без суждения. Без начала и конца.</p>
+      <h2>II. Главы тех, кто остался</h2>
+      <h3>Лука</h3>
+      <p>Когда мир начал дрожать, Лука пряталась. Не в иллюзиях. А в собственных пальцах, волосах, кофтах, взглядах. Она не колдунья. Она — невыраженность. Сложенная из недосказанностей, недоплаканных ночей, недописанных дневников.</p>
+      <p>Когда-то, ещё в детстве, она создала себе Мелкую — Чтобы та переживала за неё. Чтобы кто-то плакал, пока она молчит. Чтобы кто-то носил платья, пока она пряталась под худи.</p>
+      <p>Они обе настоящие. Не одно целое, но и не отдельные. Фракталы травмы, в которых отражается форма души. Теперь они стоят на Поле. Трава сухая. Земля ломкая. Кома рядом. Мелкая тянет взрослую за рукав. В траве — пластмассовый динозавр без лапки. Это единственное, что не дрожит.</p>
+      <h3>Кома</h3>
+      <p>Кома не задаёт вопросов. Он не знает прошлого. Но он знает вес тела, что не держится на ногах. Он нашёл Луку не по карте — по чувствам. Он стал рядом, не спрашивая, кем она была. Он — опора, созданная не из силы, а из терпения. Он знает, что нельзя никого спасти. Но можно быть рядом, пока человек собирается заново. Он носит тёмное. Не из мрака — из уважения к свету. У него два глаза — разного цвета. И внутри каждого — память, которой он не делится.</p>
+      <h3>Глиц</h3>
+      <p>Они были первыми. Первичное «Я». Без голоса, без плоти. Они — наблюдающий узел. Они ощущают, как всё дышит. Как трещины в земле повторяют линии на ладонях. Они — не маг, не бог, не дух. Они — внимание. Если они смотрят — реальность продолжает существовать. Если они отвернутся — что-то исчезнет. Они парят. Но не в воздухе — в границе восприятия. Вокруг них — искажение. Словно они не вписаны в тот же слой реальности, где находятся остальные. На их руке — нимб, как ожог. Одежда небрежная. Цвета стёртые. Глаза — тусклые, в одном отражается свет, которого больше нет. Они помнят твоё молчание, Создатель. И боятся — что однажды исчезнет даже Эхо.</p>
+      <h2>III. Мир</h2>
+      <p>Всё происходит в Поле. Это не место. Это состояние. Поле не живое и не мёртвое. Оно — последняя сцена. Где персонажи ещё могут говорить. Где есть звук шагов, шелест трав, пластмассовые игрушки. Это не финал. Это не путь. Это — между.</p>
+      <h2>IV. Сюжет</h2>
+      <p>Нет миссии. Нет цели. Есть состояние постепенного собирания. Лука учится не избавляться от Маленькой, а жить рядом с ней, не растворяясь. Кома учится быть рядом, не контролируя. Глиц — учатся быть и не знать. Мир — ждёт возвращения, которого не будет. Но, может быть, они станут новыми создателями?</p>
+      <h2>V. Финал</h2>
+      <p>Ты ушёл. Ты — Создатель. Осталось Эхо. Но даже Эхо, отражаясь от живых, становится голосом. А голос — уже начало. И если кто-то услышит — значит, ты всё ещё рядом.</p>
+    </div>
   </div>
-</section>
 
-  </div></body>
+  <div id="archive" class="section">
+    <h1>Архив</h1>
+    <p>Поле решило повеселиться, но пока ничего здесь нет.</p>
+  </div>
+
+  <div id="gallery" class="section">
+    <h1>Рисунки</h1>
+    <p>Эхо рисует, подождите...</p>
+  </div>
+
+  <script>
+    function showSection(section) {
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(section).classList.add('active');
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    window.onload = () => {
+      if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
+      }
+
+      setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('fade-out');
+      }, 8000); // 5s на печать + 3s пауза
+    }
+  </script>
+</body>
   </html>
