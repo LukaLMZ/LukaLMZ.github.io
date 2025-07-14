@@ -65,13 +65,11 @@
 
     .quote {
       border-right: 2px solid rgba(255, 255, 255, 0.75);
-      white-space: nowrap;
-      overflow: hidden;
-      width: 0;
-      animation: typing 5s steps(60, end) forwards, blink 1s step-end infinite;
-      word-wrap: break-word; /* Добавлен перенос слов */
-      max-width: 90%; /* Добавлено, чтобы текст не выходил за пределы экрана */
+      white-space: normal; /* Позволяет тексту переходить на новую строку */
+      word-wrap: break-word; /* Переносит слова, если они не помещаются */
+      max-width: 90%; /* Ограничивает ширину */
       text-align: center;
+      margin: 0 auto; /* Центрирует элемент */
     }
 
     @keyframes typing {
@@ -217,4 +215,4 @@
     }
   </script>
 </body>
-  </html>
+      </html>
