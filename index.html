@@ -61,6 +61,8 @@
       flex-direction: column;
       color: white;
       font-size: 1.6rem;
+      opacity: 1;
+      transition: opacity 2s ease-out; /* Плавное исчезновение */
     }
 
     .quote {
@@ -70,7 +72,9 @@
       max-width: 90%; /* Ограничивает ширину */
       text-align: center;
       margin: 0 auto; /* Центрирует элемент */
-      animation: typing 5s steps(60, end) forwards, fadeOut 1s forwards 8s; /* Появление и исчезновение */
+      font-size: 1.4rem;
+      opacity: 0;
+      animation: typing 5s steps(60, end) forwards, fadeIn 2s forwards, fadeOut 1s forwards 7s; /* Появление, исчезновение */
     }
 
     @keyframes typing {
@@ -79,6 +83,17 @@
       }
       to {
         width: 100%;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
       }
     }
 
@@ -200,10 +215,14 @@
         document.body.classList.add('dark');
       }
 
+      // Убираем тёмный экран после появления текста
       setTimeout(() => {
-        document.getElementById('loading-screen').classList.add('fade-out');
-      }, 8000); // 5s на печать + 3s пауза
+        document.getElementById('loading-screen').style.opacity = '0';
+        setTimeout(() => {
+          document.getElementById('loading-screen').style.display = 'none';
+        }, 2000); // Тёмный экран исчезает через 2 секунды
+      }, 8000); // Задержка перед исчезновением экрана (после текста)
     }
   </script>
 </body>
-    </html>
+  </html>
