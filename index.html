@@ -30,7 +30,7 @@
     .fade-text {
       font-size: 2rem;
       color: #ffffff;
-      animation: fadeOut 6s forwards;
+      animation: fadeOut 3s forwards;
     }
     @keyframes fadeOut {
       0% { opacity: 1; }
@@ -42,33 +42,16 @@
       margin-top: 1.5rem;
       color: #93e0ff;
       opacity: 0;
-      animation: fadeIn 8s ease-in forwards;
-      animation-delay: 4s;
+      animation: fadeIn 5s ease-in forwards;
+      animation-delay: 2s;
     }
     .subtitle {
       font-size: 1rem;
       color: #aaa;
       margin-top: 0.5rem;
       opacity: 0;
-      animation: fadeIn 10s ease-in forwards;
-      animation-delay: 6s;
-    }
-    .enter {
-      margin-top: 3rem;
-      opacity: 0;
-      animation: fadeIn 12s ease-in forwards;
-      animation-delay: 8s;
-    }
-    .enter a {
-      color: #ffffff;
-      text-decoration: none;
-      border: 1px solid #444;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
-    }
-    .enter a:hover {
-      background: #222;
+      animation: fadeIn 6s ease-in forwards;
+      animation-delay: 3s;
     }
     #main {
       display: none;
@@ -96,9 +79,6 @@
     <div class="fade-text">Ты ушёл. Ты — Создатель.</div>
     <div class="title">Осколки Нас</div>
     <div class="subtitle">История, собранная из тишины</div>
-    <div class="enter">
-      <a href="#" onclick="enterWorld()">Войти в мир</a>
-    </div>
   </div>
 
   <div id="main">
@@ -228,16 +208,15 @@
   </div>
 
   <script>
-    function enterWorld() {
-      const splash = document.getElementById('splash');
-      const main = document.getElementById('main');
-
-      splash.style.opacity = '0';
+    window.onload = () => {
       setTimeout(() => {
-        splash.style.display = 'none';
-        main.classList.add('visible');
-      }, 1500);
-    }
+        document.getElementById('splash').style.opacity = '0';
+        setTimeout(() => {
+          document.getElementById('splash').style.display = 'none';
+          document.getElementById('main').classList.add('visible');
+        }, 1500);
+      }, 3000); // 3 секунды
+    };
   </script>
 </body>
-    </html>
+               </html>
