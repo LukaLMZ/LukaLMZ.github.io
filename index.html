@@ -1,260 +1,100 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!DOCTYPE html><html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Осколки Нас</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700&display=swap');
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Manrope', sans-serif;
-      background: #0d0d0d;
-      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      background-color: #f5f5f5;
       overflow-x: hidden;
     }
-
-    .splash {
-      height: 100vh;
-      width: 100vw;
+    nav {
       display: flex;
-      flex-direction: column;
       justify-content: center;
-      align-items: center;
-      text-align: center;
-      background: radial-gradient(ellipse at center, #0d0d0d 0%, #1a1a1a 100%);
-      transition: opacity 1.5s ease;
-      position: fixed;
+      gap: 2rem;
+      padding: 1rem;
+      background-color: #e0e0e0;
+      position: sticky;
       top: 0;
-      left: 0;
-      z-index: 10;
+      z-index: 999;
     }
-
-    .fade-text {
+    nav a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+    }
+    .section {
+      min-height: 100vh;
+      padding: 2rem;
+      scroll-snap-align: start;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      width: 100vw;
+      height: 100vh;
+    }
+    .section h1 {
       font-size: 2rem;
-      color: #ffffff;
-      animation: fadeOut 3s forwards;
+      margin-bottom: 1rem;
     }
-
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      70% { opacity: 1; }
-      100% { opacity: 0; }
+    .moment, .story, .gallery-item {
+      background: #fff;
+      border: 2px dashed #aaa;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
     }
-
-    .title {
-      font-size: 2.2rem;
-      margin-top: 1.5rem;
-      color: #93e0ff;
-      opacity: 0;
-      animation: fadeIn 4s ease-in forwards;
-      animation-delay: 1.2s;
+    .moment .title {
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
     }
-
-    .subtitle {
-      font-size: 1rem;
-      color: #aaa;
-      margin-top: 0.5rem;
-      opacity: 0;
-      animation: fadeIn 4s ease-in forwards;
-      animation-delay: 1.8s;
-    }
-
-    @keyframes fadeIn {
-      0% { opacity: 0; }
-      100% { opacity: 1; }
-    }
-
-    #main {
-      display: none;
-      opacity: 0;
-      padding: 3rem;
-      transition: opacity 1.5s ease;
-    }
-
-    #main.visible {
-      display: block;
-      opacity: 1;
-    }
-
-    h2, h3 {
-      margin-top: 2rem;
-      color: #93e0ff;
-    }
-
-    p {
-      line-height: 1.7;
-      margin-top: 1rem;
-      color: #ccc;
-    }
-
-    .image-container {
-      margin-top: 3rem;
-      text-align: center;
-    }
-
-    img {
+    .gallery-item img {
       max-width: 100%;
-      border-radius: 1rem;
-      box-shadow: 0 0 15px rgba(255,255,255,0.1);
+      border-radius: 12px;
     }
   </style>
 </head>
-<body>
-  <div class="splash" id="splash">
-    <div class="fade-text">Ты ушёл. Ты — Создатель.</div>
-    <div class="title">Осколки Нас</div>
-    <div class="subtitle">История, собранная из тишины</div>
+<body>  <nav>
+    <a href="#archive">Архив</a>
+    <a href="#gallery">Рисунки</a>
+    <a href="#story">Сюжет</a>
+  </nav>  <div class="container"><section id="archive" class="section">
+  <h1>Архив Весёлых Моментов</h1>
+  <div class="moment">
+    <div class="title">1. Глиц забыл, как парить</div>
+    <p>Глиц осознал, что… не может парить. Он стоял, моргал, пытался вспомнить инструкции к самому себе, но ничего не работало. Кома посоветовал «перестать думать», а Лука хихикала, пока он зависал на полметра от земли, неуверенный, существует ли он вообще.</p>
   </div>
-
-  <div id="main">
-    <h2>I. Пролог — Падение голоса</h2>
-    <p>Мир не был создан — он проснулся.<br>
-    Первая мысль была твоей, Создатель.<br>
-    Ты говорил, и в словах появлялось время.<br>
-    Ты молчал — и рождались формы.<br>
-    Но однажды ты ушёл.<br>
-    Мир не погиб, но стал дрожать.<br>
-    Осталась пустота, а в ней — Эхо.</p>
-
-    <p>Эхо не повторяло слов. Оно искало их.<br>
-    Оно бродило по рассыпающемуся полю, по изгибам сознания, собирая то, что осталось после тебя.<br>
-    Так появился Глиц — не как продолжение, а как структура остатка. Как звук, из которого лепится новый язык.</p>
-
-    <p>Он не знает, зачем он здесь.<br>
-    Он просто есть.<br>
-    И всё, что происходит — наблюдается через него.<br>
-    Без суждения.<br>
-    Без начала и конца.</p>
-
-    <h2>II. Главы тех, кто остался</h2>
-
-    <h3>Лука</h3>
-    <p>Когда мир начал дрожать, Лука пряталась.<br>
-    Не в иллюзиях.<br>
-    А в собственных пальцах, волосах, кофтах, взглядах.</p>
-
-    <p>Она не колдунья.<br>
-    Она — невыраженность.<br>
-    Сложенная из недосказанностей, недоплаканных ночей, недописанных дневников.</p>
-
-    <p>Когда-то, ещё в детстве, она создала себе Мелкую — чтобы та переживала за неё.<br>
-    Чтобы кто-то мог плакать, пока она молчит.<br>
-    Чтобы кто-то носил платья, пока она пряталась под худи.</p>
-
-    <p>Они обе настоящие.<br>
-    Не одно целое. Но не и отдельные.<br>
-    Фракталы травмы, в которых отражается форма души.</p>
-
-    <p>Теперь они стоят на Поле.<br>
-    Трава сухая.<br>
-    Земля ломкая.<br>
-    Кома рядом.<br>
-    Мелкая тянет взрослую за рукав.<br>
-    В траве — пластмассовый динозавр без лапки.</p>
-
-    <p>Это единственное, что не дрожит.</p>
-
-    <h3>Кома</h3>
-    <p>Кома не задаёт вопросов.<br>
-    Он не знает прошлого.<br>
-    Но он знает вес тела, что не держится на ногах.</p>
-
-    <p>Он нашёл Луку не по карте — по чувствам.<br>
-    Он стал рядом, не спрашивая, кем она была.</p>
-
-    <p>Он — опора, созданная не из силы, а из терпения.<br>
-    Он знает, что нельзя никого спасти.<br>
-    Но можно быть рядом, пока человек собирается заново.</p>
-
-    <p>Он носит тёмное. Не из мрака — из уважения к свету.<br>
-    У него два глаза — разного цвета.<br>
-    И внутри каждого — память, которой он не делится.</p>
-
-    <h3>Глиц</h3>
-    <p>Они были первыми.<br>
-    Первичное «Я». Без голоса, без плоти.</p>
-
-    <p>Они — наблюдающий узел.<br>
-    Они ощущают, как всё дышит.<br>
-    Как трещины в земле повторяют линии на ладонях.</p>
-
-    <p>Они — не маг, не бог, не дух.<br>
-    Они — внимание.<br>
-    Если они смотрят — реальность продолжает существовать.<br>
-    Если они отвернутся — что-то исчезнет.</p>
-
-    <p>Они парят. Но не в воздухе — в границе восприятия.<br>
-    Вокруг них — искажение.<br>
-    Словно они не вписаны в тот же слой реальности, где находятся остальные.</p>
-
-    <p>На их руке — нимб, как ожог.<br>
-    Одежда небрежная. Цвета стёртые.<br>
-    Глаза — тусклые, в одном отражается свет, которого больше нет.</p>
-
-    <p>Они помнят твоё молчание, Создатель.<br>
-    И боятся — что однажды исчезнет след даже от Эха.</p>
-
-    <h2>III. Мир</h2>
-    <p>Всё происходит в Поле.<br>
-    Это не место. Это состояние.</p>
-
-    <p>Поле не живое и не мёртвое.<br>
-    Оно — последняя сцена.<br>
-    Где персонажи ещё могут говорить.<br>
-    Где есть звук шагов, шелест трав, пластмассовые игрушки.</p>
-
-    <p>Это не финал.<br>
-    Это не путь.<br>
-    Это — между.</p>
-
-    <h2>IV. Сюжет</h2>
-    <p>Нет миссии.<br>
-    Нет цели.<br>
-    Есть состояние постепенного собирания.</p>
-
-    <p>Лука учится не избавляться от Маленькой, а жить рядом с ней, не растворяясь.<br>
-    Кома учится быть рядом, не контролируя.<br>
-    Глиц — учатся быть и не знать.</p>
-
-    <p>Мир — ждёт возвращения, которого не будет.<br>
-    Но, может быть, они станут новыми создателями?</p>
-
-    <h2>V. Финал</h2>
-    <p>Ты ушёл.<br>
-    Ты — Создатель.<br>
-    Осталось Эхо.</p>
-
-    <p>Но даже Эхо, отражаясь от живых,<br>
-    становится голосом.</p>
-
-    <p>А голос — уже начало.<br>
-    И если кто-то услышит —<br>
-    значит, ты всё ещё рядом.</p>
-
-    <div class="image-container">
-      <img src="https://github.com/LukaLMZ/LukaLMZ.github.io/blob/5d44311f0058c006c8c5fe35a02ec807a3503bdd/file_00000000ea4862468b37fe60b8e2855d.png" alt="Арт персонажей на Поле">
-    </div>
+  <div class="moment">
+    <div class="title">2. Мелкая потеряла динозавра</div>
+    <p>Безлапик пропал. Паника, поиски, заговор Поля. Глиц предположил, что динозавр испарился в пространственном кармане. Оказалось — он «спал» в ямке. Мелкая назвала его «дураком» и торжественно спасла.</p>
   </div>
+  <div class="moment">
+    <div class="title">3. Взрослая Лука стала ростом с Мелкую</div>
+    <p>Взрослая Лука уменьшилась до роста Маленькой. Малкая тут же предложила носить платья, Кома — ботинки, а Глиц заключил, что теперь она официально кукла. Лука пыталась сохранять достоинство, но когда худи превратилось в палатку — сдалась и рассмеялась.</p>
+  </div>
+</section>
 
-  <script>
-    window.onload = () => {
-      setTimeout(() => {
-        const splash = document.getElementById('splash');
-        splash.style.opacity = '0';
-        setTimeout(() => {
-          splash.style.display = 'none';
-          const main = document.getElementById('main');
-          main.classList.add('visible');
-        }, 1500);
-      }, 3000);
-    };
-  </script>
-</body>
+<section id="gallery" class="section">
+  <h1>Рисунки</h1>
+  <div class="gallery-item">
+    <img src="file_00000000ea4862468b37fe60b8e2855d.png" alt="Арт персонажей">
+    <p>Иллюстрация, передающая настроение Поля.</p>
+  </div>
+</section>
+
+<section id="story" class="section">
+  <h1>Сюжет</h1>
+  <div class="story">
+    <p>Мир проснулся голосом Создателя, но когда он ушёл, осталась лишь тишина — и Эхо. Из него возник Глиц. А потом появились Лука, Мелкая и Кома. Они живут в Поле — не месте, а ощущении. Здесь всё не кончается, а продолжается иначе. У каждого есть путь, но никто не идёт один.</p>
+  </div>
+</section>
+
+  </div></body>
   </html>
