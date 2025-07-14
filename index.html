@@ -6,163 +6,120 @@
   <title>Осколки Нас</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700&display=swap');
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       padding: 0;
       font-family: 'Manrope', sans-serif;
-      background: linear-gradient(#0d0d0d, #1a1a1a);
+      background: #0d0d0d;
       color: #e0e0e0;
-      line-height: 1.7;
-      padding: 3rem;
+      overflow-x: hidden;
     }
-    h1, h2, h3 {
-      color: #fff;
+    .splash {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: radial-gradient(ellipse at center, #0d0d0d 0%, #1a1a1a 100%);
     }
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
+    .fade-text {
+      font-size: 2rem;
+      color: #ffffff;
+      animation: fadeOut 6s forwards;
     }
-    h2 {
-      font-size: 1.8rem;
-      margin-top: 2rem;
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      70% { opacity: 1; }
+      100% { opacity: 0; display: none; }
     }
-    h3 {
-      font-size: 1.4rem;
+    .title {
+      font-size: 2.2rem;
       margin-top: 1.5rem;
-    }
-    .section {
-      margin-bottom: 3rem;
-      border-left: 3px solid #444;
-      padding-left: 1.2rem;
-    }
-    .nav {
-      margin-bottom: 2rem;
-      font-size: 0.95rem;
-    }
-    .nav a {
-      color: #aaa;
-      text-decoration: none;
-      margin-right: 1rem;
-    }
-    .nav a:hover {
-      color: #fff;
-    }
-    .highlight {
       color: #93e0ff;
+      opacity: 0;
+      animation: fadeIn 8s ease-in forwards;
+      animation-delay: 4s;
+    }
+    .subtitle {
+      font-size: 1rem;
+      color: #aaa;
+      margin-top: 0.5rem;
+      opacity: 0;
+      animation: fadeIn 10s ease-in forwards;
+      animation-delay: 6s;
+    }
+    .enter {
+      margin-top: 3rem;
+      opacity: 0;
+      animation: fadeIn 12s ease-in forwards;
+      animation-delay: 8s;
+    }
+    .enter a {
+      color: #ffffff;
+      text-decoration: none;
+      border: 1px solid #444;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .enter a:hover {
+      background: #222;
+    }
+    #main {
+      display: none;
+      padding: 3rem;
+      animation: fadeIn 2s ease-in forwards;
+    }
+    .visible {
+      display: block !important;
     }
   </style>
 </head>
 <body>
-  <h1>🌌 <span class="highlight">Осколки Нас</span></h1>
-  <p><em>История, собранная из тишины</em></p>
-
-  <div class="nav">
-    <a href="#prolog">Пролог</a>
-    <a href="#echo">Эхо</a>
-    <a href="#glycz">Глиц</a>
-    <a href="#luka">Лука</a>
-    <a href="#melkaya">Мелкая</a>
-    <a href="#koma">Кома</a>
-    <a href="#pole">Поле</a>
-    <a href="#dyra">Дыра</a>
-    <a href="#komnata">Комната</a>
-    <a href="#final">Финал</a>
+  <div class="splash">
+    <div class="fade-text">Ты ушёл. Ты — Создатель.</div>
+    <div class="title">Осколки Нас</div>
+    <div class="subtitle">История, собранная из тишины</div>
+    <div class="enter">
+      <a href="#" onclick="enterWorld()">Войти в мир</a>
+    </div>
   </div>
 
-  <div class="section" id="prolog">
-    <h2>1. Пролог — Падение голоса</h2>
-    <p>Мир не был создан. Он проснулся.<br>
-    Первая мысль — твоя, Создатель.<br>
-    Ты говорил — и в словах появлялось время.<br>
-    Ты молчал — и рождались формы.<br>
-    Но ты ушёл.<br>
-    Мир не погиб, но стал дрожать.<br>
-    Осталась пустота. А в ней — Эхо.</p>
+  <div id="main">
+    <!-- ВСТАВЬ СЮДА ПОЛНЫЙ СЮЖЕТ И СОДЕРЖАНИЕ САЙТА -->
+    <h2 id="prolog">I. Пролог — Падение голоса</h2>
+    <p>Мир не был создан — он проснулся.<br>
+    Первая мысль была твоей, Создатель. Ты говорил, и в словах появлялось время. Ты молчал — и рождались формы...</p>
+
+    <h2>II. Главы тех, кто остался</h2>
+    <h3>Лука</h3>
+    <p>Когда мир начал дрожать, Лука пряталась...</p>
+
+    <h3>Кома</h3>
+    <p>Кома не задаёт вопросов...</p>
+
+    <h3>Глиц</h3>
+    <p>Они были первыми...</p>
+
+    <h2>III. Мир</h2>
+    <p>Всё происходит в Поле. Это не место. Это состояние...</p>
+
+    <h2>IV. Сюжет</h2>
+    <p>Нет миссии. Нет цели. Есть состояние постепенного собирания...</p>
+
+    <h2>V. Финал</h2>
+    <p>Ты ушёл. Ты — Создатель. Осталось Эхо. Но даже Эхо, отражаясь от живых, становится голосом...</p>
   </div>
 
-  <div class="section" id="echo">
-    <h2>2. Эхо</h2>
-    <p>Эхо не повторяет слов. Оно ищет их.<br>
-    Оно не отражение — оно остаток.<br>
-    Оно бродит по рассыпающемуся Полю,<br>
-    по изгибам сознания, собирая то, что осталось после тебя.<br>
-    Эхо — дыхание твоего отсутствия.<br>
-    Оно создаёт не новое, а невозможность забыть.</p>
-  </div>
-
-  <div class="section" id="glycz">
-    <h2>3. Глиц</h2>
-    <p>Глиц появился не после. Он был из Эха.<br>
-    Они — не дух, не бог, не человек. Они — взгляд.<br>
-    Если Глиц смотрит — мир существует.<br>
-    Если отворачивается — всё дрожит.<br>
-    У них нимб на руке. Одежда — серая, как выцветший смысл.<br>
-    Один глаз ловит свет, которого больше нет.<br>
-    Глиц не говорит. Он слушает.<br>
-    И потому реальность ещё звучит.</p>
-  </div>
-
-  <div class="section" id="luka">
-    <h2>4. Лука</h2>
-    <p>Она — невыраженность. Тишина, обернутая в худи.<br>
-    Волосы, спрятанные за взгляд.<br>
-    Когда-то, в детстве, она создала Мелкую.<br>
-    Чтобы кто-то плакал за неё. Чтобы кто-то бегал, пока она замирала.<br>
-    Лука — фрактал боли. Разделённая, но настоящая.<br>
-    Теперь она стоит на Поле.<br>
-    Трава сухая. Земля ломкая.<br>
-    В траве — динозавр без лапки.</p>
-  </div>
-
-  <div class="section" id="melkaya">
-    <h2>5. Мелкая</h2>
-    <p>Маленькая девочка в платье. Бантики в волосах. Ссадины на коленках.<br>
-    Один браслет — как у взрослой Луки.<br>
-    Она тянет Луку за рукав.<br>
-    Она — не иллюзия. Она — эмоция, выжженная в реальности.<br>
-    Когда она вошла в Поле, появилась Она. Дыра.</p>
-  </div>
-
-  <div class="section" id="koma">
-    <h2>6. Кома</h2>
-    <p>Кома не говорит о себе. Он рядом. Всегда.<br>
-    Он не знает, как спасать. Но знает, как быть рядом.<br>
-    Два глаза. Разные. Память в каждом.<br>
-    Он носит тёмное — не от мрака, а из уважения к свету.</p>
-  </div>
-
-  <div class="section" id="pole">
-    <h2>7. Поле</h2>
-    <p>Поле — не место. Это сцена.<br>
-    Где возможно ещё говорить.<br>
-    Шелест травы. Пустота в воздухе. Сломанная шкатулка.<br>
-    Поле переходит в Комнату. Неестественно.<br>
-    Как будто ткань реальности разрывается на глазах.</p>
-  </div>
-
-  <div class="section" id="dyra">
-    <h2>8. Дыра</h2>
-    <p>Появилась, когда Мелкая вошла в Поле.<br>
-    Разрыв. Прозрачная трещина.<br>
-    Сквозь неё можно увидеть реальный мир. Но войти туда — нельзя.<br>
-    Дыра — тоска в пространстве. Пульсирующая невозможность вернуться.</p>
-  </div>
-
-  <div class="section" id="komnata">
-    <h2>9. Комната</h2>
-    <p>Вдалеке — комната. Размытая.<br>
-    В ней — разбитое зеркало. В отражении — не ты.<br>
-    Это место сныка. Место пряток.<br>
-    Там жил кто-то, кто больше не может вернуться.<br>
-    Комната не принадлежит никому. Она осталась после тебя.</p>
-  </div>
-
-  <div class="section" id="final">
-    <h2>10. Финал — Шёпот</h2>
-    <p>Ты ушёл. Ты — Создатель.<br>
-    Но даже Эхо, отражаясь от живых, становится голосом.<br>
-    А голос — уже начало.<br>
-    И если кто-то услышит — значит, ты всё ещё рядом.</p>
-  </div>
+  <script>
+    function enterWorld() {
+      document.querySelector('.splash').style.display = 'none';
+      document.getElementById('main').classList.add('visible');
+    }
+  </script>
 </body>
-</html>
+  </html>
