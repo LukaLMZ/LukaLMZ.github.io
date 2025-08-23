@@ -2,194 +2,331 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Сеть узлов</title>
+<title>Интерактивная карта</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-body{margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#121212;color:#fff;}
-svg{width:100vw;height:100vh;display:block;}
-#menuButton{position:absolute;top:15px;left:15px;background:#333;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
-#menuButton:hover{background:#555;}
-#menu{position:absolute;top:50px;left:15px;padding:15px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:250px;z-index:10;max-height:70vh;overflow-y:auto;background:#1f1f1f;}
-#menu h4{margin:10px 0 5px 0;border-bottom:1px solid #555;padding-bottom:2px;}
-#menu input, #menu select{padding:5px;border:none;border-radius:4px;width:100%;background:#333;color:#fff;}
-#menu button{cursor:pointer;padding:5px;border:none;border-radius:4px;background:#444;color:#fff;}
-#menu button:hover{background:#666;}
-.node{fill:#00ffff;stroke:#888;stroke-width:1.5px;cursor:pointer;}
-.node.selected{stroke:#ff0;stroke-width:3px;}
-.link{stroke:#888;stroke-width:2px;cursor:pointer;}
-.link.selected{stroke:#ff0;stroke-width:3px;}
-.tooltip{position:absolute;background:#222;color:#fff;padding:5px 8px;border-radius:4px;pointer-events:none;font-size:12px;display:none;}
+body { font-family: Arial, sans-serif; margin:0; padding:0; overflow:hidden; }
+svg { width:100vw; height:100vh; display:block; }
+
+#menuButton {
+  position:absolute; top:15px; left:15px;
+  background:#3b3b3b; border:none; color:#fff;
+  padding:10px 15px; border-radius:5px; cursor:pointer; z-index:10;
+}
+#menuButton:hover { background:#555; }
+
+#menu {
+  position:absolute; top:50px; left:50px;
+  padding:20px; border-radius:8px;
+  display:none; flex-direction:column; gap:10px; max-width:350px; z-index:10;
+}
+#menu h3 { margin:5px 0; }
+#menu input, #menu button, #menu select { padding:5px; border-radius:4px; border:none; }
+#menu button { cursor:pointer; }
+.tooltip { position:absolute; background:#333; color:#fff; padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none; opacity:0; transition:0.2s; }
+.highlight { stroke:#ff0 !important; stroke-width:3px !important; }
+text { transform-origin: center; }
 </style>
 </head>
 <body>
+
 <button id="menuButton" onclick="toggleMenu()">☰ Меню</button>
+
 <div id="menu">
-<h4>Управление</h4>
-<button onclick="addNode()">Добавить узел</button>
-<button onclick="deleteNode()">Удалить выбранный узел</button>
-<button onclick="deleteLink()">Удалить выбранную связь</button>
+  <button onclick="toggleMenu()">Закрыть</button>
 
-<label id="labelColor" style="display:none;">Цвет узла:</label>
-<input type="color" id="nodeColor" style="display:none;" onchange="changeNodeColor()">
+  <div>
+    <h3>Добавить узел</h3>
+    <input type="text" id="nodeName" placeholder="Название узла">
+    <input type="text" id="nodeGroup" placeholder="Группа">
+    <button onclick="addNode()">Добавить</button>
+  </div>
 
-<label>Текст узла:</label>
-<input type="text" id="nodeText" placeholder="Введите текст" oninput="editNodeText()">
+  <div>
+    <h3>Удалить узел</h3>
+    <input type="text" id="deleteNodeName" placeholder="Название узла">
+    <button onclick="deleteNode()">Удалить</button>
+  </div>
 
-<h4>Поиск</h4>
-<input type="text" id="searchInput" placeholder="Поиск по тексту">
-<button onclick="searchNode()">Найти</button>
-<h4>Экспорт / Импорт</h4>
-<button onclick="saveJSON()">Сохранить JSON</button>
-<button onclick="loadJSON()">Загрузить JSON</button>
-<button onclick="exportPNG()">Экспорт в PNG</button>
-<h4>Помощь</h4>
-<button onclick="showHelp()">Помощь</button>
+  <div>
+    <h3>Добавить связь</h3>
+    <input type="text" id="sourceNode" placeholder="Источник">
+    <input type="text" id="targetNode" placeholder="Цель">
+    <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
+    <button onclick="addLink()">Добавить</button>
+  </div>
+
+  <div>
+    <h3>Поиск узла</h3>
+    <input type="text" id="searchNode" placeholder="Название узла">
+    <button onclick="searchNode()">Найти</button>
+  </div>
+
+  <div>
+    <h3>Сохранение / Загрузка</h3>
+    <button onclick="downloadJSON()">Скачать JSON</button>
+    <button onclick="downloadPNG()">Скачать PNG</button>
+    <input type="file" id="fileInput" accept=".json">
+    <button onclick="loadJSON()">Загрузить JSON</button>
+  </div>
+
+  <div>
+    <h3>Управление картой</h3>
+    <button onclick="resetView()">Сбросить масштаб и центр</button>
+    <button onclick="toggleTheme()">Сменить тему</button>
+  </div>
 </div>
 
 <div class="tooltip" id="tooltip"></div>
 <svg></svg>
 
 <script>
-const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
-const g=svg.append("g");
-let nodes=[], links=[], selectedNode=null, selectedLink=null, creatingLink=false, tempLink=null;
+let nodes = [], links = [];
+let darkTheme = true;
 
-const tooltip=d3.select("#tooltip");
+const svg = d3.select("svg");
+const width = window.innerWidth, height = window.innerHeight;
+const g = svg.append("g");
+const tooltip = d3.select("#tooltip");
 
-// --- Блокировка контекстного меню ---
-document.addEventListener("contextmenu", e => e.preventDefault());
-
-// --- Меню ---
-function toggleMenu(){const menu=document.getElementById("menu"); menu.style.display=(menu.style.display==="flex")?"none":"flex";}
-function showHelp(){alert("Использование:\n- Добавление узла: кнопка 'Добавить узел'\n- Удаление узла: кнопка 'Удалить выбранный узел'\n- Создание связи: удержание правой кнопки мыши на узле и drag к другому\n- Удаление связи: выбрать связь и нажать 'Удалить связь'\n- Изменение текста узла: ввод в поле 'Текст узла'\n- Изменение цвета: через поле 'Цвет узла' (появляется при выборе узла)\n- Поиск: ввод текста и 'Найти'\n- Центрирование и масштабирование карты: drag и колесо мыши\n- Экспорт/Импорт JSON и PNG\n- Подсказки при наведении на узел")}
-
-// --- Узлы ---
-function addNode(){const node={id:"n"+(nodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,r:15,color:"#00ffff",text:""}; nodes.push(node); update(); saveToLocal();}
-function deleteNode(){if(!selectedNode) return; links=links.filter(l=>l.source!==selectedNode && l.target!==selectedNode); nodes=nodes.filter(n=>n!==selectedNode); deselectNode(); update(); saveToLocal();}
-function editNodeText(){if(selectedNode) {selectedNode.text=document.getElementById("nodeText").value; update(); saveToLocal();}}
-function changeNodeColor(){if(selectedNode){selectedNode.color=document.getElementById("nodeColor").value; update(); saveToLocal();}}
-
-// --- Связи ---
-function deleteLink(){if(selectedLink){links=links.filter(l=>l!==selectedLink); selectedLink=null; update(); saveToLocal();}}
-
-// --- Поиск ---
-function searchNode(){
-    const val=document.getElementById("searchInput").value.toLowerCase().trim();
-    if(!val) return;
-    const node=nodes.find(n=>n.text.toLowerCase().includes(val));
-    if(node){
-        selectedNode=node;
-        document.getElementById("nodeText").value=node.text;
-        document.getElementById("nodeColor").value=node.color;
-        update();
-        const scale=d3.zoomTransform(svg.node()).k;
-        svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity.translate(width/2 - node.x*scale,height/2 - node.y*scale).scale(scale));
-    } else {alert("Узел не найден");}
+const savedData = localStorage.getItem('mapData');
+if(savedData){
+    try{
+        const data = JSON.parse(savedData);
+        nodes = data.nodes || [];
+        darkTheme = data.darkTheme ?? true;
+        links = (data.links || []).map(l => {
+            const s = nodes.find(n => n.id === (l.source.id || l.source));
+            const t = nodes.find(n => n.id === (l.target.id || l.target));
+            if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
+            return null;
+        }).filter(l => l !== null);
+    } catch(e){ console.warn("Ошибка загрузки сохраненной сессии", e); }
 }
 
-// --- Выделение/снятие выделения ---
-function selectNode(node){
-    selectedNode=node;
-    update();
-    document.getElementById("nodeText").value=node.text;
-    const colorInput=document.getElementById("nodeColor");
-    colorInput.value=node.color;
-    colorInput.style.display="block"; // показываем кнопку цвета
-    document.getElementById("labelColor").style.display="block";
-}
-function deselectNode(){
-    selectedNode=null;
-    update();
-    document.getElementById("nodeColor").style.display="none";
-    document.getElementById("labelColor").style.display="none";
-}
+// === Эффект магнита: притяжение узлов к центру ===
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d=>d.id).distance(150))
+    .force("charge", d3.forceManyBody().strength(-500))
+    .force("center", d3.forceCenter(width/2, height/2))
+    .force("magnetX", d3.forceX(width/2).strength(0.05))
+    .force("magnetY", d3.forceY(height/2).strength(0.05));
+// ===================================================
 
-// --- Центрирование карты ---
-function centerMap(){const scale=d3.zoomTransform(svg.node()).k; svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity.translate(width/2,height/2).scale(scale));}
+const linkGroup = g.append("g").attr("stroke-opacity",0.6);
+const nodeGroup = g.append("g");
 
-// --- Сохранение/Загрузка ---
-function saveJSON(){const data={nodes:nodes,links:links.map(l=>({source:l.source.id,target:l.target.id}))}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url;a.download="network.json";a.click();URL.revokeObjectURL(url);}
-function loadJSON(){const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=e=>{const file=e.target.files[0]; const reader=new FileReader(); reader.onload=function(ev){const data=JSON.parse(ev.target.result); nodes=[]; links=[]; const map={}; data.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); data.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); deselectNode(); update(); saveToLocal();}; reader.readAsText(file);}; input.click();}
-function exportPNG(){const serializer=new XMLSerializer(); const source=serializer.serializeToString(svg.node()); const image=new Image(); image.onload=function(){const canvas=document.createElement("canvas"); canvas.width=width; canvas.height=height; const ctx=canvas.getContext("2d"); ctx.fillStyle="#121212"; ctx.fillRect(0,0,width,height); ctx.drawImage(image,0,0); const link=document.createElement("a"); link.download="network.png"; link.href=canvas.toDataURL("image/png"); link.click();}; image.src='data:image/svg+xml;base64,'+btoa(source);}
-
-// --- Автосохранение ---
-function saveToLocal(){const data={nodes:nodes,links:links.map(l=>({source:l.source.id,target:l.target.id}))}; localStorage.setItem("networkData",JSON.stringify(data));}
-function loadFromLocal(){const data=localStorage.getItem("networkData"); if(data){const parsed=JSON.parse(data); nodes=[]; links=[]; const map={}; parsed.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); parsed.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); deselectNode(); update();}}
-
-// --- Визуализация ---
-const linkGroup=g.append("g"), nodeGroup=g.append("g");
-const zoom=d3.zoom().scaleExtent([0.2,5]).on("zoom",e=>g.attr("transform",e.transform));
+const zoom = d3.zoom().scaleExtent([0.1,5]).on("zoom", e=>g.attr("transform", e.transform));
 svg.call(zoom);
 
-function update(){
-    linkGroup.selectAll("*").remove();
-    nodeGroup.selectAll("*").remove();
+function toggleMenu(){
+    const menu = document.getElementById("menu");
+    menu.style.display = (menu.style.display==="flex") ? "none" : "flex";
+}
 
-    links.forEach(l=>{
-        linkGroup.append("line")
-            .attr("class","link")
-            .classed("selected",l===selectedLink)
-            .attr("x1",l.source.x)
-            .attr("y1",l.source.y)
-            .attr("x2",l.target.x)
-            .attr("y2",l.target.y)
-            .on("mousedown", event=>{if(event.button===0){selectedLink=l; deselectNode(); update();}})
+function updateMenuTheme(){
+    const bgColor = darkTheme ? "#1f1f1f" : "#f0f0f0";
+    const textColor = darkTheme ? "#fff" : "#000";
+    const inputBg = darkTheme ? "#333" : "#fff";
+    const inputColor = darkTheme ? "#fff" : "#000";
+    const buttonBg = darkTheme ? "#3b3b3b" : "#ddd";
+    const buttonHover = darkTheme ? "#555" : "#bbb";
+
+    const menu = document.getElementById("menu");
+    menu.style.backgroundColor = bgColor;
+    menu.style.color = textColor;
+
+    menu.querySelectorAll("input").forEach(el => {
+        el.style.backgroundColor = inputBg;
+        el.style.color = inputColor;
+        el.style.border = darkTheme ? "none" : "1px solid #aaa";
     });
-
-    nodes.forEach(n=>{
-        const gNode=nodeGroup.append("g");
-        gNode.append("circle")
-            .attr("class","node")
-            .classed("selected",n===selectedNode)
-            .attr("cx",n.x)
-            .attr("cy",n.y)
-            .attr("r",n.r)
-            .attr("fill",n.color)
-            .call(d3.drag()
-                .on("start",(event)=>{selectNode(n);})
-                .on("drag",(event)=>{n.x=event.x; n.y=event.y; update(); saveToLocal();})
-            )
-            .on("mouseover", ()=>{tooltip.style("display","block").text(n.text);})
-            .on("mousemove", (event)=>{tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px");})
-            .on("mouseout", ()=>{tooltip.style("display","none");})
-            .on("dblclick", ()=>{const t=prompt("Введите текст узла:", n.text); if(t!==null){n.text=t; document.getElementById("nodeText").value=t; update(); saveToLocal();}})
-            .on("mousedown", (event)=>{
-                if(event.button===2){creatingLink=true; tempLink={source:n,x1:n.x,y1:n.y,x2:n.x,y2:n.y}; update();}
-            });
-
-        if(n===selectedNode){
-            document.getElementById("nodeText").value=n.text;
-            const colorInput=document.getElementById("nodeColor");
-            colorInput.value=n.color;
-            colorInput.style.display="block";
-            document.getElementById("labelColor").style.display="block";
-        }
+    menu.querySelectorAll("button").forEach(el => {
+        el.style.backgroundColor = buttonBg;
+        el.style.color = textColor;
+        el.onmouseover = () => el.style.backgroundColor = buttonHover;
+        el.onmouseout = () => el.style.backgroundColor = buttonBg;
     });
+}
 
-    if(creatingLink && tempLink){
-        linkGroup.append("line")
-            .attr("x1",tempLink.x1)
-            .attr("y1",tempLink.y1)
-            .attr("x2",tempLink.x2)
-            .attr("y2",tempLink.y2)
-            .attr("stroke","#ff0")
-            .attr("stroke-width",2);
+function addNode(){
+    const name=document.getElementById("nodeName").value.trim();
+    const group=document.getElementById("nodeGroup").value.trim();
+    if(!name || nodes.find(n=>n.id===name)) return;
+    nodes.push({id:name, group:group, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50});
+    saveSession(); update();
+}
+function deleteNode(){
+    const name=document.getElementById("deleteNodeName").value.trim();
+    nodes=nodes.filter(n=>n.id!==name);
+    links=links.filter(l=>l.source.id!==name && l.target.id!==name);
+    saveSession(); update();
+}
+function addLink(){
+    const source=document.getElementById("sourceNode").value.trim();
+    const target=document.getElementById("targetNode").value.trim();
+    const weight=parseFloat(document.getElementById("linkWeight").value);
+    if(!source || !target) return;
+    const sNode=nodes.find(n=>n.id===source), tNode=nodes.find(n=>n.id===target);
+    if(!sNode || !tNode) return;
+    links.push({source:sNode, target:tNode, weight:weight});
+    saveSession(); update();
+}
+
+function searchNode(){
+    const name=document.getElementById("searchNode").value.trim();
+    if(!name) return;
+    const node=nodeGroup.selectAll("circle").filter(d=>d.id===name);
+    if(!node.empty()){
+        simulation.alpha(1).restart();
+        const nodeData = node.datum();
+        const transform=d3.zoomTransform(svg.node());
+        const scale = transform.k;
+        const x = width/2 - nodeData.x*scale;
+        const y = height/2 - nodeData.y*scale;
+        svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(x,y).scale(scale));
+        node.classed("highlight",true);
+        setTimeout(()=>node.classed("highlight",false),2000);
     }
 }
 
-// --- Drag правой кнопкой (создание связи) ---
-svg.on("mousemove", (event)=>{
-    if(creatingLink && tempLink){tempLink.x2=event.offsetX; tempLink.y2=event.offsetY; update();}
-}).on("mouseup", (event)=>{
-    if(creatingLink && tempLink){
-        const targetNode=nodes.find(n=>Math.hypot(n.x-event.offsetX,n.y-event.offsetY)<n.r);
-        if(targetNode && targetNode!==tempLink.source){links.push({source:tempLink.source,target:targetNode}); saveToLocal();}
-        creatingLink=false; tempLink=null; update();
-    }
+function toggleTheme(){
+    darkTheme=!darkTheme;
+    svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
+    nodeGroup.selectAll("text").attr("fill", darkTheme ? "#fff" : "#000");
+    linkGroup.selectAll("line").attr("stroke", darkTheme ? "#888" : "#555");
+    updateMenuTheme();
+    saveSession();
+}
+
+function update(){
+    const color=d3.scaleOrdinal(d3.schemeCategory10);
+
+    const link=linkGroup.selectAll("line").data(links);
+    link.join("line")
+        .attr("stroke-width", d=>Math.sqrt(d.weight))
+        .on("mouseover", (event,d)=>tooltip.style("opacity",1).html(`${d.source.id} → ${d.target.id} (Вес: ${d.weight})`))
+        .on("mousemove", (event)=>tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px"))
+        .on("mouseout", ()=>tooltip.style("opacity",0))
+        .attr("stroke", darkTheme?"#888":"#555");
+
+    const node=nodeGroup.selectAll("circle").data(nodes, d=>d.id);
+    node.join(enter=>{
+        const c=enter.append("circle")
+            .attr("r",0)
+            .attr("fill", d=>color(d.group))
+            .call(drag(simulation))
+            .on("mouseover", (event,d)=>tooltip.style("opacity",1).html(`Название: ${d.id}<br>Группа: ${d.group || '—'}`))
+            .on("mousemove", (event)=>tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px"))
+            .on("mouseout", ()=>tooltip.style("opacity",0));
+        c.transition().duration(500).attr("r",20);
+        return c;
+    }).attr("fill", d=>color(d.group));
+
+    const labels=nodeGroup.selectAll("text").data(nodes, d=>d.id);
+    labels.join(enter=>enter.append("text").text(d=>d.id)
+        .attr("text-anchor","middle")
+        .attr("dy",-25)
+        .attr("fill", darkTheme?"#fff":"#000")
+        .attr("font-size","12px")
+        .attr("font-weight","300")
+        .attr("pointer-events","none"));
+
+    simulation.nodes(nodes).on("tick", ticked);
+    simulation.force("link").links(links);
+    simulation.alpha(1).restart();
+}
+
+function ticked(){
+    linkGroup.selectAll("line")
+        .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
+        .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+    nodeGroup.selectAll("circle").attr("cx",d=>d.x).attr("cy",d=>d.y);
+
+    const transform = d3.zoomTransform(svg.node());
+    nodeGroup.selectAll("text")
+        .attr("x",d=>d.x)
+        .attr("y",d=>d.y-25)
+        .attr("transform", d=>`scale(${1/transform.k})`);
+}
+
+function drag(sim){
+    function start(event,d){if(!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
+    function dragged(event,d){d.fx=event.x; d.fy=event.y;}
+    function end(event,d){if(!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null;}
+    return d3.drag().on("start",start).on("drag",dragged).on("end",end);
+}
+
+function downloadJSON(){
+    const dataStr=JSON.stringify({nodes:nodes,links:links},null,2); 
+    const blob=new Blob([dataStr],{type:"application/json"}); 
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();
+}
+
+function loadJSON(){
+    const fileInput=document.getElementById("fileInput"); 
+    if(fileInput.files.length===0) return; 
+    const reader=new FileReader(); 
+    reader.onload=function(e){
+        try{
+            const data=JSON.parse(e.target.result);
+            nodes = data.nodes || [];
+            links = (data.links || []).map(l => {
+                const s = nodes.find(n => n.id === (l.source.id || l.source));
+                const t = nodes.find(n => n.id === (l.target.id || l.target));
+                if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
+                return null;
+            }).filter(l => l !== null);
+            resetView();
+            saveSession();
+            update();
+        } catch(err){
+            alert("Ошибка загрузки файла:"+err);
+        }
+    }; 
+    reader.readAsText(fileInput.files[0]);
+}
+
+function downloadPNG(){
+    const serializer=new XMLSerializer(); 
+    const cloneSvg=svg.node().cloneNode(true); 
+    cloneSvg.querySelector("g").removeAttribute("transform"); 
+    const svgString=serializer.serializeToString(cloneSvg); 
+    const canvas=document.createElement("canvas"); 
+    canvas.width=svg.clientWidth; 
+    canvas.height=svg.clientHeight; 
+    const ctx=canvas.getContext("2d"); 
+    const img=new Image(); 
+    const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); 
+    const url=URL.createObjectURL(svgBlob); 
+    img.onload=function(){
+        ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; 
+        ctx.fillRect(0,0,canvas.width, canvas.height); 
+        ctx.drawImage(img,0,0); 
+        URL.revokeObjectURL(url); 
+        const a=document.createElement("a"); 
+        a.download="map.png"; 
+        a.href=canvas.toDataURL("image/png"); 
+        a.click();
+    }; 
+    img.src=url;
+}
+
+function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
+
+window.addEventListener("resize",()=>{
+    svg.attr("width",window.innerWidth).attr("height",window.innerHeight);
+    simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2));
+    simulation.alpha(1).restart();
 });
 
-// --- Инициализация ---
-loadFromLocal();
+function saveSession(){
+    const data={nodes:nodes, links:links, darkTheme:darkTheme};
+    localStorage.setItem('mapData', JSON.stringify(data));
+}
+
+svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
+updateMenuTheme();
 update();
 </script>
 </body>
