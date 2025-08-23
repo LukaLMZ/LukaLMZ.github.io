@@ -32,7 +32,7 @@ svg { width:100vw; height:100vh; display:block; }
 </head>
 <body>
 
-<button id="menuButton">☰ Меню</button>
+<button id="menuButton" onclick="toggleMenu()">☰ Меню</button>
 
 <div id="menu">
   <button onclick="toggleMenu()">Закрыть</button>
@@ -41,13 +41,13 @@ svg { width:100vw; height:100vh; display:block; }
     <h3>Добавить узел</h3>
     <input type="text" id="nodeName" placeholder="Название узла">
     <input type="text" id="nodeGroup" placeholder="Группа">
-    <button onclick="addNode(); toggleMenu(false)">Добавить</button>
+    <button onclick="addNode()">Добавить</button>
   </div>
 
   <div>
     <h3>Удалить узел</h3>
     <input type="text" id="deleteNodeName" placeholder="Название узла">
-    <button onclick="deleteNode(); toggleMenu(false)">Удалить</button>
+    <button onclick="deleteNode()">Удалить</button>
   </div>
 
   <div>
@@ -55,7 +55,7 @@ svg { width:100vw; height:100vh; display:block; }
     <input type="text" id="sourceNode" placeholder="Источник">
     <input type="text" id="targetNode" placeholder="Цель">
     <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
-    <button onclick="addLink(); toggleMenu(false)">Добавить</button>
+    <button onclick="addLink()">Добавить</button>
   </div>
 
   <div>
@@ -74,7 +74,7 @@ svg { width:100vw; height:100vh; display:block; }
 
   <div>
     <h3>Управление картой</h3>
-    <button onclick="resetView(); toggleMenu(false)">Сбросить масштаб и центр</button>
+    <button onclick="resetView()">Сбросить масштаб и центр</button>
     <button onclick="toggleTheme()">Сменить тему</button>
   </div>
 </div>
@@ -102,8 +102,13 @@ const nodeGroup = g.append("g");
 const zoom = d3.zoom().scaleExtent([0.1,5]).on("zoom", e=>g.attr("transform", e.transform));
 svg.call(zoom);
 
-function toggleMenu(forceState){ const menu=document.getElementById("menu"); if(forceState===false){menu.style.display="none"; return;} menu.style.display=(menu.style.display==="flex")?"none":"flex"; }
+// ---------- Меню ----------
+function toggleMenu(){
+    const menu = document.getElementById("menu");
+    menu.style.display = (menu.style.display==="flex") ? "none" : "flex";
+}
 
+// ---------- Узлы и связи ----------
 function addNode(){
     const name=document.getElementById("nodeName").value.trim();
     const group=document.getElementById("nodeGroup").value.trim();
@@ -111,14 +116,12 @@ function addNode(){
     nodes.push({id:name, group:group, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50});
     update();
 }
-
 function deleteNode(){
     const name=document.getElementById("deleteNodeName").value.trim();
     nodes=nodes.filter(n=>n.id!==name);
     links=links.filter(l=>l.source.id!==name && l.target.id!==name);
     update();
 }
-
 function addLink(){
     const source=document.getElementById("sourceNode").value.trim();
     const target=document.getElementById("targetNode").value.trim();
@@ -130,6 +133,7 @@ function addLink(){
     update();
 }
 
+// ---------- Поиск ----------
 function searchNode(){
     const name=document.getElementById("searchNode").value.trim();
     if(!name) return;
@@ -145,6 +149,7 @@ function searchNode(){
     }
 }
 
+// ---------- Темная / светлая тема ----------
 function toggleTheme(){
     darkTheme=!darkTheme;
     svg.style("background-color",darkTheme?"#121212":"#f0f0f0");
@@ -152,15 +157,14 @@ function toggleTheme(){
     linkGroup.selectAll("line").attr("stroke", darkTheme?"#888":"#555");
 }
 
+// ---------- Обновление ----------
 function update(){
     const color=d3.scaleOrdinal(d3.schemeCategory10);
 
     const link=linkGroup.selectAll("line").data(links);
     link.join("line")
         .attr("stroke-width", d=>Math.sqrt(d.weight))
-        .on("mouseover", (event,d)=>{
-            tooltip.style("opacity",1).html(`${d.source.id} → ${d.target.id} (Вес: ${d.weight})`);
-        })
+        .on("mouseover", (event,d)=>tooltip.style("opacity",1).html(`${d.source.id} → ${d.target.id} (Вес: ${d.weight})`))
         .on("mousemove", (event)=>tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px"))
         .on("mouseout", ()=>tooltip.style("opacity",0))
         .attr("stroke", darkTheme?"#888":"#555");
@@ -192,6 +196,7 @@ function update(){
     simulation.alpha(1).restart();
 }
 
+// ---------- Tick ----------
 function ticked(){
     linkGroup.selectAll("line")
         .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
@@ -200,34 +205,28 @@ function ticked(){
     nodeGroup.selectAll("text").attr("x",d=>d.x).attr("y",d=>d.y-25);
 }
 
-function drag(sim){ function start(event,d){if(!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
-function dragged(event,d){d.fx=event.x;d.fy=event.y;} function end(event,d){if(!event.active) sim.alphaTarget(0); d.fx=null;d.fy=null;}
-return d3.drag().on("start",start).on("drag",dragged).on("end",end); }
-
-function downloadJSON(){const dataStr=JSON.stringify({nodes,nodes,links},null,2); const blob=new Blob([dataStr],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
-function loadJSON(){
-    const fileInput=document.getElementById("fileInput");
-    if(fileInput.files.length===0) return;
-    const reader=new FileReader();
-    reader.onload=function(e){
-        try{ const data=JSON.parse(e.target.result); nodes=data.nodes||[]; links=data.links||[]; resetView(); update();}
-        catch(err){ alert("Ошибка загрузки файла:"+err); }
-    };
-    reader.readAsText(fileInput.files[0]);
-}
-function downloadPNG(){
-    const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true);
-    cloneSvg.querySelector("g").removeAttribute("transform");
-    const svgString=serializer.serializeToString(cloneSvg);
-    const canvas=document.createElement("canvas"); canvas.width=svg.clientWidth; canvas.height=svg.clientHeight;
-    const ctx=canvas.getContext("2d"); const img=new Image();
-    const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(svgBlob);
-    img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}
-    img.src=url;
+// ---------- Drag ----------
+function drag(sim){
+    function start(event,d){if(!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
+    function dragged(event,d){d.fx=event.x; d.fy=event.y;}
+    function end(event,d){if(!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null;}
+    return d3.drag().on("start",start).on("drag",dragged).on("end",end);
 }
 
+// ---------- JSON / PNG ----------
+function downloadJSON(){const dataStr=JSON.stringify({nodes:nodes,links:links},null,2); const blob=new Blob([dataStr],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
+function loadJSON(){const fileInput=document.getElementById("fileInput"); if(fileInput.files.length===0) return; const reader=new FileReader(); reader.onload=function(e){try{const data=JSON.parse(e.target.result); nodes=data.nodes||[]; links=data.links||[]; resetView(); update();}catch(err){alert("Ошибка загрузки файла:"+err);}}; reader.readAsText(fileInput.files[0]);}
+function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); cloneSvg.querySelector("g").removeAttribute("transform"); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas"); canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(svgBlob); img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
+
+// ---------- Управление видом ----------
 function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
-window.addEventListener("resize",()=>{ svg.attr("width",window.innerWidth).attr("height",window.innerHeight); simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2)); simulation.alpha(1).restart(); });
+
+// ---------- Resize ----------
+window.addEventListener("resize",()=>{
+    svg.attr("width",window.innerWidth).attr("height",window.innerHeight);
+    simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2));
+    simulation.alpha(1).restart();
+});
 </script>
 </body>
 </html>
