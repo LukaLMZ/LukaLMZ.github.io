@@ -2,374 +2,144 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Интерактивная карта / дерево</title>
+<title>Карта / Дерево</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; overflow:hidden; }
-svg { width:100vw; height:100vh; display:block; }
-
-#menuButton { position:absolute; top:15px; left:15px; background:#3b3b3b; border:none; color:#fff; padding:10px 15px; border-radius:5px; cursor:pointer; z-index:10; }
-#menuButton:hover { background:#555; }
-#modeButton { position:absolute; bottom:15px; right:15px; background:#3b3b3b; border:none; color:#fff; padding:10px 15px; border-radius:5px; cursor:pointer; z-index:10; }
-#modeButton:hover { background:#555; }
-
-#menu { position:absolute; top:50px; left:50px; padding:20px; border-radius:8px; display:none; flex-direction:column; gap:10px; max-width:350px; z-index:10; }
-#menu h3 { margin:5px 0; }
-#menu input, #menu button, #menu select { padding:5px; border-radius:4px; border:none; }
-#menu button { cursor:pointer; }
-.tooltip { position:absolute; background:#333; color:#fff; padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none; opacity:0; transition:0.2s; }
-text { transform-origin: center; }
+body{margin:0;overflow:hidden;font-family:Arial,sans-serif;}
+svg{width:100vw;height:100vh;display:block;}
+#menuButton{position:absolute;top:15px;left:15px;background:#3b3b3b;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
+#menuButton:hover{background:#555;}
+#modeButton{position:absolute;bottom:15px;right:15px;background:#3b3b3b;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
+#modeButton:hover{background:#555;}
+#menu{position:absolute;top:50px;left:50px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:350px;z-index:10;}
+#menu h3{margin:5px 0;}
+#menu input,#menu button,#menu select{padding:5px;border-radius:4px;border:none;}
+#menu button{cursor:pointer;}
+.tooltip{position:absolute;background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none;opacity:0;transition:0.2s;}
+text{transform-origin:center;}
+.box{fill:#555;stroke:#888;stroke-width:2;cursor:move;}
+.line{stroke:#888;stroke-width:2;}
 </style>
 </head>
 <body>
-
 <button id="menuButton" onclick="toggleMenu()">☰ Меню</button>
 <button id="modeButton" onclick="toggleMode()">Сетевой режим</button>
-
-<div id="menu">
-  <button onclick="toggleMenu()">Закрыть</button>
-
-  <div>
-    <h3>Добавить узел</h3>
-    <input type="text" id="nodeName" placeholder="Название узла">
-    <input type="text" id="nodeGroup" placeholder="Группа">
-    <input type="text" id="parentId" placeholder="Parent ID (для дерева)">
-    <button onclick="addNode()">Добавить</button>
-  </div>
-
-  <div>
-    <h3>Удалить узел</h3>
-    <input type="text" id="deleteNodeName" placeholder="Название узла">
-    <button onclick="deleteNode()">Удалить</button>
-  </div>
-
-  <div>
-    <h3>Добавить связь</h3>
-    <input type="text" id="sourceNode" placeholder="Источник">
-    <input type="text" id="targetNode" placeholder="Цель">
-    <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
-    <button onclick="addLink()">Добавить</button>
-  </div>
-
-  <div>
-    <h3>Поиск узла</h3>
-    <input type="text" id="searchNode" placeholder="Название узла">
-    <button onclick="searchNode()">Найти</button>
-  </div>
-
-  <div>
-    <h3>Сохранение / Загрузка</h3>
-    <button onclick="downloadJSON()">Скачать JSON</button>
-    <button onclick="downloadPNG()">Скачать PNG</button>
-    <input type="file" id="fileInput" accept=".json">
-    <button onclick="loadJSON()">Загрузить JSON</button>
-  </div>
-
-  <div>
-    <h3>Управление картой</h3>
-    <button onclick="resetView()">Сбросить масштаб и центр</button>
-    <button onclick="toggleTheme()">Сменить тему</button>
-  </div>
-</div>
-
+<div id="menu"></div>
 <div class="tooltip" id="tooltip"></div>
 <svg></svg>
 
 <script>
-let nodes = [], links = [];
-let darkTheme = true;
-let mode = "network"; // "network" или "tree"
+let nodes=[], links=[], treeNodes=[], treeLinks=[];
+let darkTheme=true, mode="network";
+const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
+const g=svg.append("g"), tooltip=d3.select("#tooltip");
+let selectedBox=null, dragLine=null;
 
-const svg = d3.select("svg");
-const width = window.innerWidth, height = window.innerHeight;
-const g = svg.append("g");
-const tooltip = d3.select("#tooltip");
-
-const savedData = localStorage.getItem('mapData');
-if(savedData){
-    try{
-        const data = JSON.parse(savedData);
-        nodes = data.nodes || [];
-        darkTheme = data.darkTheme ?? true;
-        mode = data.mode ?? "network";
-        links = (data.links || []).map(l => {
-            const s = nodes.find(n => n.id === (l.source.id || l.source));
-            const t = nodes.find(n => n.id === (l.target.id || l.target));
-            if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
-            return null;
-        }).filter(l => l !== null);
-    } catch(e){ console.warn("Ошибка загрузки сохраненной сессии", e); }
-}
-
-const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d=>d.id).distance(150))
-    .force("charge", d3.forceManyBody().strength(-500))
-    .force("center", d3.forceCenter(width/2, height/2));
-
-const linkGroup = g.append("g").attr("stroke-opacity",0.6);
-const nodeGroup = g.append("g");
-
-const zoom = d3.zoom().scaleExtent([0.1,5]).on("zoom", e=>g.attr("transform", e.transform));
+// Zoom и drag
+const zoom=d3.zoom().scaleExtent([0.1,5]).on("zoom",e=>g.attr("transform",e.transform));
 svg.call(zoom);
 
-document.getElementById("modeButton").innerText = mode === "network" ? "Сетевой режим" : "Дерево";
+// Меню
+function toggleMenu(){const menu=document.getElementById("menu");menu.style.display=(menu.style.display==="flex")?"none":"flex";}
+function updateMenu(){const menu=document.getElementById("menu");menu.innerHTML="";if(mode==="network"){menu.style.background=darkTheme?"#1f1f1f":"#f0f0f0";menu.style.color=darkTheme?"#fff":"#000";
+menu.innerHTML=`<h3>Добавить узел</h3>
+<input id="nodeName" placeholder="Название">
+<input id="nodeGroup" placeholder="Группа">
+<button onclick="addNode()">Добавить</button>
+<h3>Удалить узел</h3>
+<input id="deleteNodeName" placeholder="Название">
+<button onclick="deleteNode()">Удалить</button>
+<h3>Добавить связь</h3>
+<input id="sourceNode" placeholder="Источник">
+<input id="targetNode" placeholder="Цель">
+<button onclick="addLink()">Добавить</button>
+<h3>Поиск узла</h3>
+<input id="searchNode" placeholder="Название">
+<button onclick="searchNode()">Найти</button>
+<h3>Сохранение/Загрузка</h3>
+<button onclick="downloadJSON()">Скачать JSON</button>
+<button onclick="downloadPNG()">Скачать PNG</button>
+<input type="file" id="fileInput" accept=".json">
+<button onclick="loadJSON()">Загрузить JSON</button>
+<h3>Управление</h3>
+<button onclick="resetView()">Сбросить масштаб</button>
+<button onclick="toggleTheme()">Сменить тему</button>`;}else{
+menu.style.background=darkTheme?"#1f1f1f":"#f0f0f0";menu.style.color=darkTheme?"#fff":"#000";
+menu.innerHTML=`<h3>Добавить бокс</h3><button onclick="addBox()">Добавить пустой бокс</button>
+<h3>Удалить бокс</h3><button onclick="deleteBox()">Удалить выбранный бокс</button>
+<h3>Сброс и темы</h3>
+<button onclick="resetView()">Сбросить масштаб</button>
+<button onclick="toggleTheme()">Сменить тему</button>
+<h3>Скачать</h3><button onclick="downloadJSON()">Скачать JSON</button>
+<button onclick="downloadPNG()">Скачать PNG</button>`;}}
 
+// --- Режимы ---
 function toggleMode(){
-    mode = mode === "network" ? "tree" : "network";
-    document.getElementById("modeButton").innerText = mode === "network" ? "Сетевой режим" : "Дерево";
-    if(mode === "tree") buildTree();
-    else update();
-    saveSession();
+mode = mode==="network"?"tree":"network";
+document.getElementById("modeButton").innerText = mode==="network"?"Сетевой режим":"Дерево";
+updateMenu(); update();
 }
 
-function buildTree(){
-    // Дерево с использованием d3.hierarchy
-    const rootNodes = nodes.filter(n => !n.parentId || n.parentId.trim()==="");
-    const root = {id:"root", children:rootNodes};
-    const idToNode = {};
-    nodes.forEach(n=>idToNode[n.id]=n);
-    nodes.forEach(n=>{
-        if(n.parentId && idToNode[n.parentId]){
-            idToNode[n.parentId].children = idToNode[n.parentId].children || [];
-            idToNode[n.parentId].children.push(n);
-        }
-    });
+// --- Сетевая карта ---
+function addNode(){const name=document.getElementById("nodeName").value.trim();const group=document.getElementById("nodeGroup").value.trim();
+if(!name||nodes.find(n=>n.id===name))return; nodes.push({id:name, group:group, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50}); update(); saveSession();}
+function deleteNode(){const name=document.getElementById("deleteNodeName").value.trim(); nodes=nodes.filter(n=>n.id!==name); links=links.filter(l=>l.source.id!==name && l.target.id!==name); update(); saveSession();}
+function addLink(){if(mode!=="network")return; const s=document.getElementById("sourceNode").value.trim(), t=document.getElementById("targetNode").value.trim();
+const sNode=nodes.find(n=>n.id===s), tNode=nodes.find(n=>n.id===t); if(!sNode||!tNode)return; links.push({source:sNode,target:tNode,weight:1}); update(); saveSession();}
+function searchNode(){if(mode!=="network")return; const name=document.getElementById("searchNode").value.trim(); const node=nodeGroup.selectAll("circle").filter(d=>d.id===name);
+if(!node.empty()){const nodeData=node.datum(); const transform=d3.zoomTransform(svg.node()); const scale=transform.k; const x=width/2-nodeData.x*scale; const y=height/2-nodeData.y*scale;
+svg.transition().duration(750).call(zoom.transform,d3.zoomIdentity.translate(x,y).scale(scale));}}
 
-    const hierarchy = d3.hierarchy(root, d => d.children);
-    const treeLayout = d3.tree().size([width, height-50]);
-    treeLayout(hierarchy);
+// --- Дерево ---
+function addBox(){const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""}; treeNodes.push(box); update();}
+function deleteBox(){if(!selectedBox)return; treeNodes=treeNodes.filter(b=>b!==selectedBox); treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox); selectedBox=null; update();}
+function startLink(d){dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
+function moveLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.x2=pt[0]; dragLine.y2=pt[1]; update();}}
+function endLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; update();}
 
-    nodes.forEach(n=>{ if(n.id!=="root"){ n.x = n.x; n.y = n.y; } });
-
-    // Связи только родитель → дети
-    links = [];
-    hierarchy.each(d=>{
-        if(d.parent && d.data.id!=="root") links.push({source:d.parent.data, target:d.data, weight:1});
-    });
-
-    update();
-}
-
-function toggleMenu(){
-    const menu = document.getElementById("menu");
-    menu.style.display = (menu.style.display==="flex") ? "none" : "flex";
-}
-
-function updateMenuTheme(){
-    const bgColor = darkTheme ? "#1f1f1f" : "#f0f0f0";
-    const textColor = darkTheme ? "#fff" : "#000";
-    const inputBg = darkTheme ? "#333" : "#fff";
-    const inputColor = darkTheme ? "#fff" : "#000";
-    const buttonBg = darkTheme ? "#3b3b3b" : "#ddd";
-    const buttonHover = darkTheme ? "#555" : "#bbb";
-
-    const menu = document.getElementById("menu");
-    menu.style.backgroundColor = bgColor;
-    menu.style.color = textColor;
-
-    menu.querySelectorAll("input").forEach(el => {
-        el.style.backgroundColor = inputBg;
-        el.style.color = inputColor;
-        el.style.border = darkTheme ? "none" : "1px solid #aaa";
-    });
-    menu.querySelectorAll("button").forEach(el => {
-        el.style.backgroundColor = buttonBg;
-        el.style.color = textColor;
-        el.onmouseover = () => el.style.backgroundColor = buttonHover;
-        el.onmouseout = () => el.style.backgroundColor = buttonBg;
-    });
-}
-
-function addNode(){
-    const name=document.getElementById("nodeName").value.trim();
-    const group=document.getElementById("nodeGroup").value.trim();
-    const parent=document.getElementById("parentId").value.trim();
-    if(!name || nodes.find(n=>n.id===name)) return;
-    nodes.push({id:name, group:group, parentId:parent, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50});
-    if(mode==="tree") buildTree();
-    else update();
-    saveSession();
-}
-function deleteNode(){
-    const name=document.getElementById("deleteNodeName").value.trim();
-    nodes=nodes.filter(n=>n.id!==name);
-    links=links.filter(l=>l.source.id!==name && l.target.id!==name);
-    if(mode==="tree") buildTree();
-    else update();
-    saveSession();
-}
-function addLink(){
-    if(mode==="tree") return; // В дереве ручные связи не нужны
-    const source=document.getElementById("sourceNode").value.trim();
-    const target=document.getElementById("targetNode").value.trim();
-    const weight=parseFloat(document.getElementById("linkWeight").value);
-    if(!source || !target) return;
-    const sNode=nodes.find(n=>n.id===source), tNode=nodes.find(n=>n.id===target);
-    if(!sNode || !tNode) return;
-    links.push({source:sNode, target:tNode, weight:weight});
-    update(); saveSession();
-}
-
-function searchNode(){
-    const name=document.getElementById("searchNode").value.trim();
-    if(!name) return;
-    const node=nodeGroup.selectAll("circle").filter(d=>d.id===name);
-    if(!node.empty()){
-        const nodeData = node.datum();
-        const transform=d3.zoomTransform(svg.node());
-        const scale = transform.k;
-        const x = width/2 - nodeData.x*scale;
-        const y = height/2 - nodeData.y*scale;
-        svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(x,y).scale(scale));
-        node.classed("highlight",true);
-        setTimeout(()=>node.classed("highlight",false),2000);
-    }
-}
-
-function toggleTheme(){
-    darkTheme=!darkTheme;
-    svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
-    nodeGroup.selectAll("text").attr("fill", darkTheme ? "#fff" : "#000");
-    linkGroup.selectAll("line").attr("stroke", darkTheme ? "#888" : "#555");
-    updateMenuTheme();
-    saveSession();
-}
-
-// --- Обновление и отрисовка ---
+// --- Обновление ---
+const nodeGroup=g.append("g"), linkGroup=g.append("g");
 function update(){
-    const color=d3.scaleOrdinal(d3.schemeCategory10);
-
-    const link=linkGroup.selectAll("line").data(links);
-    link.join("line")
-        .attr("stroke-width", d=>Math.sqrt(d.weight))
-        .on("mouseover", (event,d)=>tooltip.style("opacity",1).html(`${d.source.id} → ${d.target.id} (Вес: ${d.weight})`))
-        .on("mousemove", (event)=>tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px"))
-        .on("mouseout", ()=>tooltip.style("opacity",0))
-        .attr("stroke", darkTheme?"#888":"#555");
-
-    const node=nodeGroup.selectAll("circle").data(nodes, d=>d.id);
-    node.join(enter=>{
-        const c=enter.append("circle")
-            .attr("r",0)
-            .attr("fill", d=>color(d.group))
-            .call(drag(simulation))
-            .on("mouseover", (event,d)=>tooltip.style("opacity",1).html(`Название: ${d.id}<br>Группа: ${d.group || '—'}`))
-            .on("mousemove", (event)=>tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px"))
-            .on("mouseout", ()=>tooltip.style("opacity",0));
-        c.transition().duration(500).attr("r",20);
-        return c;
-    }).attr("fill", d=>color(d.group));
-
-    const labels=nodeGroup.selectAll("text").data(nodes, d=>d.id);
-    labels.join(enter=>enter.append("text").text(d=>d.id)
-        .attr("text-anchor","middle")
-        .attr("dy",-25)
-        .attr("fill", darkTheme?"#fff":"#000")
-        .attr("font-size","12px")
-        .attr("font-weight","300")
-        .attr("pointer-events","none"));
-
-    if(mode==="network"){
-        simulation.nodes(nodes).on("tick", ticked);
-        simulation.force("link").links(links);
-        simulation.alpha(1).restart();
-    } else {
-        ticked(); // для дерева просто нарисуем в позиции
-    }
+linkGroup.selectAll("*").remove(); nodeGroup.selectAll("*").remove();
+if(mode==="network"){
+const link=linkGroup.selectAll("line").data(links).join("line").attr("stroke",darkTheme?"#888":"#555").attr("stroke-width",2);
+const node=nodeGroup.selectAll("circle").data(nodes).join("circle").attr("r",20).attr("fill",d3.scaleOrdinal(d3.schemeCategory10)(d.group))
+.call(d3.drag().on("start",dragStart).on("drag",dragged).on("end",dragEnd));
+nodeGroup.selectAll("text").data(nodes).join("text").text(d=>d.id).attr("x",d=>d.x).attr("y",d=>d.y-25).attr("fill",darkTheme?"#fff":"#000").attr("text-anchor","middle");
+simulation.nodes(nodes).on("tick",ticked); simulation.force("link",d3.forceLink(links).id(d=>d.id).distance(150)); simulation.alpha(1).restart();
+}else{
+treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y).attr("stroke",darkTheme?"#888":"#555").attr("stroke-width",2));
+treeNodes.forEach(b=>{
+const gNode=nodeGroup.append("g").call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update();}));
+gNode.append("rect").attr("class","box").attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h).attr("fill",darkTheme?"#333":"#ddd");
+gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y).attr("fill",darkTheme?"#fff":"#000").attr("text-anchor","middle").attr("dy",5);
+gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text);if(t!==null){b.text=t;update();}});
+gNode.on("mousedown",()=>selectedBox=b);});
+if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","red").attr("stroke-width",2);}}
 }
 
-function ticked(){
-    linkGroup.selectAll("line")
-        .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
-        .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
-    nodeGroup.selectAll("circle").attr("cx",d=>d.x).attr("cy",d=>d.y);
+// --- Drag для сети ---
+const simulation=d3.forceSimulation().force("charge",d3.forceManyBody().strength(-500)).force("center",d3.forceCenter(width/2,height/2));
+function ticked(){linkGroup.selectAll("line").attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+nodeGroup.selectAll("circle").attr("cx",d=>d.x).attr("cy",d=>d.y); nodeGroup.selectAll("text").attr("x",d=>d.x).attr("y",d=>d.y-25);}
+function dragStart(event,d){if(!event.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
+function dragged(event,d){d.fx=event.x; d.fy=event.y;}
+function dragEnd(event,d){if(!event.active) simulation.alphaTarget(0); d.fx=null; d.fy=null;}
 
-    const transform = d3.zoomTransform(svg.node());
-    nodeGroup.selectAll("text")
-        .attr("x",d=>d.x)
-        .attr("y",d=>d.y-25)
-        .attr("transform", d=>`scale(${1/transform.k})`);
-}
+// --- Экспорт/Импорт ---
+function downloadJSON(){const data={nodes,links,treeNodes,treeLinks,mode,darkTheme}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
+function loadJSON(){const fileInput=document.createElement("input"); fileInput.type="file"; fileInput.accept=".json"; fileInput.onchange=()=>{const reader=new FileReader(); reader.onload=e=>{const data=JSON.parse(e.target.result);
+nodes=data.nodes||[];links=data.links||[];treeNodes=data.treeNodes||[];treeLinks=data.treeLinks||[];mode=data.mode||"network";darkTheme=data.darkTheme??true;updateMenu();update();}; reader.readAsText(fileInput.files[0]);}; fileInput.click();}
+function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas");
+canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const blob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(blob);
+img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
+function resetView(){svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity);}
+function toggleTheme(){darkTheme=!darkTheme;svg.style("background-color",darkTheme?"#121212":"#f0f0f0");updateMenu();update();}
 
-function drag(sim){
-    function start(event,d){if(!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
-    function dragged(event,d){d.fx=event.x; d.fy=event.y;}
-    function end(event,d){if(!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null;}
-    return d3.drag().on("start",start).on("drag",dragged).on("end",end);
-}
+// Mouse events для дерева
+svg.on("mousemove",moveLink).on("mouseup",()=>{if(dragLine)dragLine=null; update();});
 
-function downloadJSON(){
-    const dataStr=JSON.stringify({nodes:nodes,links:links, darkTheme:darkTheme, mode:mode},null,2); 
-    const blob=new Blob([dataStr],{type:"application/json"}); 
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();
-}
-
-function loadJSON(){
-    const fileInput=document.getElementById("fileInput"); 
-    if(fileInput.files.length===0) return; 
-    const reader=new FileReader(); 
-    reader.onload=function(e){
-        try{
-            const data=JSON.parse(e.target.result);
-            nodes = data.nodes || [];
-            darkTheme = data.darkTheme ?? true;
-            mode = data.mode ?? "network";
-            links = (data.links || []).map(l => {
-                const s = nodes.find(n => n.id === (l.source.id || l.source));
-                const t = nodes.find(n => n.id === (l.target.id || l.target));
-                if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
-                return null;
-            }).filter(l => l !== null);
-            if(mode==="tree") buildTree();
-            else update();
-            saveSession();
-        } catch(err){ alert("Ошибка загрузки файла:"+err); }
-    }; 
-    reader.readAsText(fileInput.files[0]);
-}
-
-function downloadPNG(){
-    const serializer=new XMLSerializer(); 
-    const cloneSvg=svg.node().cloneNode(true); 
-    cloneSvg.querySelector("g").removeAttribute("transform"); 
-    const svgString=serializer.serializeToString(cloneSvg); 
-    const canvas=document.createElement("canvas"); 
-    canvas.width=svg.clientWidth; 
-    canvas.height=svg.clientHeight; 
-    const ctx=canvas.getContext("2d"); 
-    const img=new Image(); 
-    const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); 
-    const url=URL.createObjectURL(svgBlob); 
-    img.onload=function(){
-        ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; 
-        ctx.fillRect(0,0,canvas.width, canvas.height); 
-        ctx.drawImage(img,0,0); 
-        URL.revokeObjectURL(url); 
-        const a=document.createElement("a"); 
-        a.download="map.png"; 
-        a.href=canvas.toDataURL("image/png"); 
-        a.click();
-    }; 
-    img.src=url;
-}
-
-function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
-
-window.addEventListener("resize",()=>{
-    svg.attr("width",window.innerWidth).attr("height",window.innerHeight);
-    simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2));
-    simulation.alpha(1).restart();
-});
-
-function saveSession(){
-    const data={nodes:nodes, links:links, darkTheme:darkTheme, mode:mode};
-    localStorage.setItem('mapData', JSON.stringify(data));
-}
-
-svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
-updateMenuTheme();
-update();
+updateMenu(); update();
 </script>
-
 </body>
 </html>
