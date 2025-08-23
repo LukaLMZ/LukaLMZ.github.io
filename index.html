@@ -5,29 +5,55 @@
 <title>Карта взаимодействий</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; background-color:#121212; color:#fff; }
-  #menu { padding: 20px; background-color:#1f1f1f; display:flex; flex-wrap: wrap; gap:10px; }
-  input, button { padding:5px; margin-right:5px; border-radius:4px; border:none; }
-  button { cursor:pointer; background-color:#3b3b3b; color:#fff; }
-  button:hover { background-color:#555; }
-  svg { width:100vw; height:calc(100vh - 120px); display:block; background-color:#121212; }
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background-color:#121212; color:#fff; overflow:hidden; }
+  svg { width:100vw; height:100vh; display:block; background-color:#121212; }
+
+  /* Кнопка меню */
+  #menuButton {
+    position: absolute;
+    top: 15px; left: 15px;
+    background:#3b3b3b; border:none; color:#fff;
+    padding:10px 15px; border-radius:5px; cursor:pointer;
+    z-index: 10;
+  }
+  #menuButton:hover { background:#555; }
+
+  /* Плавающее меню */
+  #menu {
+    position: absolute;
+    top: 50px; left: 50px;
+    background:#1f1f1f; padding:20px; border-radius:8px;
+    display:none; flex-direction:column; gap:10px;
+    max-width: 350px;
+    z-index: 10;
+  }
+  #menu h3 { margin:5px 0; }
+  #menu input, #menu button { padding:5px; border-radius:4px; border:none; }
+  #menu button { cursor:pointer; background-color:#3b3b3b; color:#fff; }
+  #menu button:hover { background-color:#555; }
+
+  /* Подсказка */
   .tooltip { position:absolute; background:#333; color:#fff; padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none; opacity:0; transition:0.2s; }
 </style>
 </head>
 <body>
 
+<button id="menuButton">☰ Меню</button>
+
 <div id="menu">
+  <button onclick="toggleMenu()">Закрыть</button>
+
   <div>
     <h3>Добавить узел</h3>
     <input type="text" id="nodeName" placeholder="Название узла">
     <input type="text" id="nodeGroup" placeholder="Категория">
-    <button onclick="addNode()">Добавить</button>
+    <button onclick="addNode(); toggleMenu(false)">Добавить</button>
   </div>
 
   <div>
     <h3>Удалить узел</h3>
     <input type="text" id="deleteNodeName" placeholder="Название узла">
-    <button onclick="deleteNode()">Удалить</button>
+    <button onclick="deleteNode(); toggleMenu(false)">Удалить</button>
   </div>
 
   <div>
@@ -35,7 +61,7 @@
     <input type="text" id="sourceNode" placeholder="Источник">
     <input type="text" id="targetNode" placeholder="Цель">
     <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
-    <button onclick="addLink()">Добавить</button>
+    <button onclick="addLink(); toggleMenu(false)">Добавить</button>
   </div>
 
   <div>
@@ -48,7 +74,7 @@
 
   <div>
     <h3>Управление картой</h3>
-    <button onclick="resetView()">Сбросить масштаб и центр</button>
+    <button onclick="resetView(); toggleMenu(false)">Сбросить масштаб и центр</button>
   </div>
 </div>
 
@@ -61,9 +87,9 @@ let links = [];
 
 const svg = d3.select("svg");
 const width = window.innerWidth;
-const height = window.innerHeight - 120;
+const height = window.innerHeight;
 
-// Группа для zoom & pan
+// Плавающая группа для zoom & pan
 const g = svg.append("g");
 
 const tooltip = d3.select("#tooltip");
@@ -81,6 +107,13 @@ const zoom = d3.zoom()
     .scaleExtent([0.1, 5])
     .on("zoom", (event) => { g.attr("transform", event.transform); });
 svg.call(zoom);
+
+// ----------------- Toggle menu -----------------
+function toggleMenu(forceState){
+    const menu = document.getElementById("menu");
+    if(forceState === false) { menu.style.display="none"; return; }
+    menu.style.display = (menu.style.display==="flex") ? "none" : "flex";
+}
 
 // ----------------- Update -----------------
 function update() {
@@ -154,16 +187,13 @@ function drag(simulation) {
 function addNode() {
     const name = document.getElementById("nodeName").value.trim();
     const group = document.getElementById("nodeGroup").value.trim();
-    if(name && !nodes.find(n => n.id===name)) {
-        nodes.push({id:name, group:group});
-        update();
-    }
+    if(name && !nodes.find(n=>n.id===name)){ nodes.push({id:name, group:group}); update(); }
 }
 function deleteNode() {
     const name = document.getElementById("deleteNodeName").value.trim();
     if(!name) return;
-    nodes = nodes.filter(n => n.id!==name);
-    links = links.filter(l => l.source.id!==name && l.target.id!==name);
+    nodes = nodes.filter(n=>n.id!==name);
+    links = links.filter(l=>l.source.id!==name && l.target.id!==name);
     update();
 }
 function addLink() {
@@ -180,10 +210,8 @@ function addLink() {
 function downloadJSON(){
     const dataStr = JSON.stringify({nodes:nodes, links:links},null,2);
     const blob = new Blob([dataStr], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href=url; a.download="map.json"; a.click();
-    URL.revokeObjectURL(url);
+    a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();
 }
 
 // ----------------- Load JSON -----------------
@@ -198,9 +226,7 @@ function loadJSON(){
             links = data.links||[];
             resetView();
             update();
-        } catch(err){
-            alert("Ошибка загрузки файла: "+err);
-        }
+        }catch(err){ alert("Ошибка загрузки файла: "+err); }
     };
     reader.readAsText(fileInput.files[0]);
 }
@@ -209,22 +235,19 @@ function loadJSON(){
 function downloadPNG(){
     const serializer = new XMLSerializer();
     const cloneSvg = svg.node().cloneNode(true);
-
-    // убираем zoom transform
     const cloneG = cloneSvg.querySelector("g");
     cloneG.removeAttribute("transform");
-
     const svgString = serializer.serializeToString(cloneSvg);
+
     const canvas = document.createElement("canvas");
-    canvas.width = svgNode.clientWidth;
-    canvas.height = svgNode.clientHeight;
+    canvas.width = svg.clientWidth;
+    canvas.height = svg.clientHeight;
     const ctx = canvas.getContext("2d");
     const img = new Image();
     const svgBlob = new Blob([svgString], {type:"image/svg+xml;charset=utf-8"});
     const url = URL.createObjectURL(svgBlob);
     img.onload=function(){
-        ctx.fillStyle="#121212";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle="#121212"; ctx.fillRect(0,0,canvas.width,canvas.height);
         ctx.drawImage(img,0,0);
         URL.revokeObjectURL(url);
         const pngLink=document.createElement("a");
@@ -236,16 +259,10 @@ function downloadPNG(){
 }
 
 // ----------------- Reset View -----------------
-function resetView(){
-    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
-}
+function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
 
 // ----------------- Resize -----------------
-window.addEventListener("resize",()=>{
-    svg.attr("width",window.innerWidth).attr("height",window.innerHeight-120);
-    simulation.force("center",d3.forceCenter(window.innerWidth/2,(window.innerHeight-120)/2));
-    simulation.alpha(1).restart();
-});
+window.addEventListener("resize",()=>{ svg.attr("width",window.innerWidth).attr("height",window.innerHeight); simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2)); simulation.alpha(1).restart(); });
 </script>
 </body>
 </html>
