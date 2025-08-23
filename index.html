@@ -32,6 +32,9 @@ text{fill:#fff;text-anchor:middle;pointer-events:none;font-size:14px;}
 <input type="number" id="boxHeight" placeholder="Высота">
 <button onclick="resizeBox()">Применить размер</button>
 
+<h4>Режимы</h4>
+<label><input type="checkbox" id="moveMode" onchange="toggleMoveMode()"> Перемещение боксов</label>
+
 <h4>Экспорт / Сохранение</h4>
 <button onclick="saveJSON()">Сохранить JSON</button>
 <button onclick="loadJSON()">Загрузить JSON</button>
@@ -51,6 +54,7 @@ text{fill:#fff;text-anchor:middle;pointer-events:none;font-size:14px;}
 const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
 const g=svg.append("g");
 let treeNodes=[], treeLinks=[], selectedBox=null, dragLine=null, rightDragBox=null;
+let moveMode=false;
 
 // --- Блокировка контекстного меню ---
 document.addEventListener("contextmenu", e => e.preventDefault());
@@ -59,9 +63,9 @@ document.addEventListener("contextmenu", e => e.preventDefault());
 function toggleMenu(){const menu=document.getElementById("menu"); menu.style.display=(menu.style.display==="flex")?"none":"flex";}
 function showHelp(){alert("Использование режима дерева:\n\n"+
 "- Добавление бокса: кнопка 'Добавить бокс'\n"+
-"- Выбор бокса: одиночный клик (выбранный бокс подсвечивается)\n"+
+"- Выбор бокса: одиночный клик (выделение)\n"+
 "- Редактирование текста: двойной клик по боксу\n"+
-"- Перемещение бокса: зажмите и тяните левую кнопку мыши\n"+
+"- Перемещение бокса: включите 'Перемещение боксов'\n"+
 "- Создание связи: правая кнопка мыши + drag на другой бокс\n"+
 "- Удаление бокса: кнопка 'Удалить выбранный бокс'\n"+
 "- Изменение размера: ввод в поля Ширина/Высота и кнопка 'Применить размер'\n"+
@@ -75,6 +79,7 @@ function showHelp(){alert("Использование режима дерева:
 function addBox(){const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""}; treeNodes.push(box); update(); saveToLocal();}
 function deleteBox(){if(!selectedBox) return; treeNodes=treeNodes.filter(b=>b!==selectedBox); treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox); selectedBox=null; update(); saveToLocal();}
 function resizeBox(){if(!selectedBox){alert("Сначала выберите бокс"); return;} const w=parseInt(document.getElementById("boxWidth").value); const h=parseInt(document.getElementById("boxHeight").value); if(!isNaN(w)) selectedBox.w=w; if(!isNaN(h)) selectedBox.h=h; update(); saveToLocal();}
+function toggleMoveMode(){moveMode=document.getElementById("moveMode").checked;}
 
 // --- Создание связи мышкой ---
 function startRightLink(d){rightDragBox=d; dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
@@ -139,15 +144,26 @@ function update(){
     linkGroup.selectAll("*").remove();
     nodeGroup.selectAll("*").remove();
 
-    treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
+    treeLinks.forEach(l=>{
+        linkGroup.append("line")
+            .attr("class","line")
+            .attr("x1",l.source.x)
+            .attr("y1",l.source.y)
+            .attr("x2",l.target.x)
+            .attr("y2",l.target.y);
+    });
 
     treeNodes.forEach(b=>{
         const gNode=nodeGroup.append("g");
 
-        gNode.call(d3.drag().on("drag", e=>{
-            b.x=e.x; b.y=e.y;
-            update(); saveToLocal();
-        }));
+        // Драг активен только в режиме moveMode
+        if(moveMode){
+            gNode.call(d3.drag().on("drag", e=>{
+                b.x = e.x; 
+                b.y = e.y; 
+                update(); saveToLocal();
+            }));
+        }
 
         gNode.append("rect")
             .attr("class","box")
@@ -157,10 +173,10 @@ function update(){
             .attr("width", b.w)
             .attr("height", b.h)
             .on("mousedown", event=>{
-                if(event.button===2){
-                    if(selectedBox===b){ startRightLink(b); } // только если выбран
-                } else{
-                    selectedBox=b; 
+                if(event.button===2){ // правая кнопка
+                    startRightLink(b);
+                } else { // левая кнопка — выбор
+                    selectedBox=b;
                     document.getElementById("boxWidth").value=b.w;
                     document.getElementById("boxHeight").value=b.h;
                     update();
@@ -177,17 +193,17 @@ function update(){
 
     if(dragLine){
         linkGroup.append("line")
-            .attr("x1",dragLine.x1)
-            .attr("y1",dragLine.y1)
-            .attr("x2",dragLine.x2)
-            .attr("y2",dragLine.y2)
-            .attr("stroke","#00ffff")
-            .attr("stroke-width",2);
+            .attr("x1", dragLine.x1)
+            .attr("y1", dragLine.y1)
+            .attr("x2", dragLine.x2)
+            .attr("y2", dragLine.y2)
+            .attr("stroke", "#00ffff")
+            .attr("stroke-width", 2);
     }
 }
 
 // --- Drag-события для линии ---
-svg.on("mousemove",moveRightLink).on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
+svg.on("mousemove",moveRightLink).on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(rightDragBox);}});
 
 loadFromLocal();
 update();
