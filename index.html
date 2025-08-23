@@ -38,9 +38,11 @@
   </div>
 
   <div>
-    <h3>Сохранить карту</h3>
+    <h3>Сохранить/Загрузить карту</h3>
     <button onclick="downloadJSON()">Скачать JSON</button>
     <button onclick="downloadPNG()">Скачать PNG</button>
+    <input type="file" id="fileInput" accept=".json">
+    <button onclick="loadJSON()">Загрузить JSON</button>
   </div>
 </div>
 
@@ -63,23 +65,27 @@ const linkGroup = svg.append("g").attr("stroke", "#888").attr("stroke-opacity", 
 const nodeGroup = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1.5);
 
 function update() {
+    // LINKS
     const link = linkGroup.selectAll("line").data(links);
     link.join("line")
         .attr("stroke-width", d => Math.sqrt(d.weight));
 
+    // NODES
     const node = nodeGroup.selectAll("circle").data(nodes, d => d.id);
     node.join("circle")
         .attr("r", 20)
         .attr("fill", d => d3.schemeCategory10[d.group?.length % 10])
         .call(drag(simulation));
 
+    // LABELS
     const labels = nodeGroup.selectAll("text").data(nodes, d => d.id);
     labels.join("text")
         .text(d => d.id)
         .attr("text-anchor", "middle")
         .attr("dy", -25)
         .attr("fill", "#fff")
-        .attr("font-size", "12px")
+        .attr("font-size", "10px")
+        .attr("font-weight", "300") // Тонкий текст
         .attr("pointer-events", "none");
 
     simulation.nodes(nodes).on("tick", ticked);
@@ -155,6 +161,24 @@ function downloadJSON() {
     a.download = "map.json";
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ------------------ Загрузка JSON ------------------
+function loadJSON() {
+    const fileInput = document.getElementById("fileInput");
+    if(fileInput.files.length === 0) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            nodes = data.nodes || [];
+            links = data.links || [];
+            update();
+        } catch(err) {
+            alert("Ошибка загрузки файла: " + err);
+        }
+    };
+    reader.readAsText(fileInput.files[0]);
 }
 
 // ------------------ Скачивание PNG ------------------
