@@ -2,189 +2,75 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Карта / Дерево</title>
+<title>Режим Древа</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-body{margin:0;overflow:hidden;font-family:Arial,sans-serif;}
-svg{width:100vw;height:100vh;display:block;}
-#menuButton{position:absolute;top:15px;left:15px;background:#3b3b3b;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
+body{margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#121212;color:#fff;}
+svg{width:100vw;height:100vh;display:block;cursor:default;}
+#menuButton{position:absolute;top:15px;left:15px;background:#333;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
 #menuButton:hover{background:#555;}
-#modeButton{position:absolute;bottom:15px;right:15px;background:#3b3b3b;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
-#modeButton:hover{background:#555;}
-#menu{position:absolute;top:50px;left:50px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:350px;z-index:10;max-height:70vh;overflow-y:auto;}
-#menu h3{margin:5px 0;}
-#menu input,#menu button,#menu select{padding:5px;border-radius:4px;border:none;}
-#menu button{cursor:pointer;}
-.tooltip{position:absolute;background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none;opacity:0;transition:0.2s;}
-text{transform-origin:center;}
-.box{fill:#555;stroke:#888;stroke-width:2;cursor:pointer;}
+#menu{position:absolute;top:50px;left:15px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:250px;z-index:10;max-height:70vh;overflow-y:auto;background:#1f1f1f;}
+#menu button{cursor:pointer;padding:5px;border:none;border-radius:4px;}
+.box{fill:#333;stroke:#888;stroke-width:2;cursor:pointer;}
+.box.selected{stroke:#00ffff;stroke-width:3;}
 .line{stroke:#888;stroke-width:2;}
+text{fill:#fff;text-anchor:middle;pointer-events:none;font-size:14px;}
 </style>
 </head>
 <body>
 <button id="menuButton" onclick="toggleMenu()">☰ Меню</button>
-<button id="modeButton" onclick="toggleMode()">Сетевой режим</button>
-<div id="menu"></div>
-<div class="tooltip" id="tooltip"></div>
+<div id="menu">
+<button onclick="addBox()">Добавить бокс</button>
+<button onclick="deleteBox()">Удалить выбранный бокс</button>
+</div>
 <svg></svg>
 
 <script>
-let nodes=[], links=[], treeNodes=[], treeLinks=[];
-let darkTheme=true, mode="network";
 const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
-const g=svg.append("g"), tooltip=d3.select("#tooltip");
-let selectedBox=null, dragLine=null, rightDragBox=null;
-
-// Zoom и drag
-const zoom=d3.zoom().scaleExtent([0.1,5]).on("zoom",e=>g.attr("transform",e.transform));
-svg.call(zoom);
+const g=svg.append("g");
+let treeNodes=[], treeLinks=[], selectedBox=null, dragLine=null, rightDragBox=null;
 
 // Меню
 function toggleMenu(){const menu=document.getElementById("menu");menu.style.display=(menu.style.display==="flex")?"none":"flex";}
-function updateMenu(){
-const menu=document.getElementById("menu");menu.innerHTML="";
-if(mode==="network"){
-menu.style.background=darkTheme?"#1f1f1f":"#f0f0f0";menu.style.color=darkTheme?"#fff":"#000";
-menu.innerHTML=`<h3>Добавить узел</h3>
-<input id="nodeName" placeholder="Название">
-<input id="nodeGroup" placeholder="Группа">
-<button onclick="addNode()">Добавить</button>
-<h3>Удалить узел</h3>
-<input id="deleteNodeName" placeholder="Название">
-<button onclick="deleteNode()">Удалить</button>
-<h3>Добавить связь</h3>
-<input id="sourceNode" placeholder="Источник">
-<input id="targetNode" placeholder="Цель">
-<button onclick="addLink()">Добавить</button>
-<h3>Поиск узла</h3>
-<input id="searchNode" placeholder="Название">
-<button onclick="searchNode()">Найти</button>
-<h3>Сохранение/Загрузка</h3>
-<button onclick="downloadJSON()">Скачать JSON</button>
-<button onclick="downloadPNG()">Скачать PNG</button>
-<input type="file" id="fileInput" accept=".json">
-<button onclick="loadJSON()">Загрузить JSON</button>
-<h3>Управление</h3>
-<button onclick="resetView()">Сбросить масштаб</button>
-<button onclick="toggleTheme()">Сменить тему</button>
-<button onclick="showHelp()">Помощь</button>`;
-}else{
-menu.style.background=darkTheme?"#1f1f1f":"#f0f0f0";menu.style.color=darkTheme?"#fff":"#000";
-menu.innerHTML=`<h3>Добавить бокс</h3><button onclick="addBox()">Добавить пустой бокс</button>
-<h3>Удалить бокс</h3><button onclick="deleteBox()">Удалить выбранный бокс</button>
-<h3>Сброс и темы</h3>
-<button onclick="resetView()">Сбросить масштаб</button>
-<button onclick="toggleTheme()">Сменить тему</button>
-<h3>Скачать</h3><button onclick="downloadJSON()">Скачать JSON</button>
-<button onclick="downloadPNG()">Скачать PNG</button>
-<button onclick="showHelp()">Помощь</button>`;}
-}
 
-// --- Помощь ---
-function showHelp(){
-let text="";
-if(mode==="network"){
-text=`Сетевой режим:
-- Добавьте узел через меню: введите название и группу.
-- Удалите узел, указав его название.
-- Добавьте связь между узлами вручную.
-- Найдите узел через поиск — карта центрируется на нём.
-- Перемещайте узлы мышью, увеличивайте/уменьшайте масштаб колесом мыши.
-- Скачивайте карту в JSON или PNG.
-- Сохраняемая сессия сохраняет расположение узлов.`;
-}else{
-text=`Режим дерева:
-- Одиночный клик по боксу — выбрать его.
-- Правая кнопка мыши и перетаскивание — создать связь между боксами.
-- Нажмите "Добавить бокс", чтобы создать пустой прямоугольник.
-- Двойной клик по боксу — добавить текст.
-- Боксы можно перемещать мышью, связи подстраиваются автоматически.
-- Скачивайте карту в JSON или PNG.
-- Меню минимальное, все остальные функции недоступны в дереве.`;
-}
-let helpDiv=document.getElementById("helpDiv");
-if(!helpDiv){
-helpDiv=document.createElement("div");
-helpDiv.id="helpDiv";
-helpDiv.style.position="absolute";
-helpDiv.style.top="50px";
-helpDiv.style.right="50px";
-helpDiv.style.background=darkTheme?"#1f1f1f":"#f0f0f0";
-helpDiv.style.color=darkTheme?"#fff":"#000";
-helpDiv.style.padding="20px";
-helpDiv.style.borderRadius="8px";
-helpDiv.style.maxWidth="400px";
-helpDiv.style.zIndex=20;
-helpDiv.style.boxShadow="0 0 10px rgba(0,0,0,0.5)";
-document.body.appendChild(helpDiv);}
-helpDiv.innerHTML=`<h3>Помощь</h3><p style="white-space:pre-line;">${text}</p><button onclick="closeHelp()">Закрыть</button>`;}
-function closeHelp(){const helpDiv=document.getElementById("helpDiv");if(helpDiv) helpDiv.remove();}
-
-// --- Режимы ---
-function toggleMode(){mode = mode==="network"?"tree":"network"; document.getElementById("modeButton").innerText = mode==="network"?"Сетевой режим":"Дерево"; updateMenu(); update();}
-
-// --- Сетевая карта ---
-function addNode(){const name=document.getElementById("nodeName").value.trim();const group=document.getElementById("nodeGroup").value.trim();
-if(!name||nodes.find(n=>n.id===name))return; nodes.push({id:name, group:group, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50}); update(); saveSession();}
-function deleteNode(){const name=document.getElementById("deleteNodeName").value.trim(); nodes=nodes.filter(n=>n.id!==name); links=links.filter(l=>l.source.id!==name && l.target.id!==name); update(); saveSession();}
-function addLink(){if(mode!=="network")return; const s=document.getElementById("sourceNode").value.trim(), t=document.getElementById("targetNode").value.trim();
-const sNode=nodes.find(n=>n.id===s), tNode=nodes.find(n=>n.id===t); if(!sNode||!tNode)return; links.push({source:sNode,target:tNode,weight:1}); update(); saveSession();}
-function searchNode(){if(mode!=="network")return; const name=document.getElementById("searchNode").value.trim(); const node=nodeGroup.selectAll("circle").filter(d=>d.id===name);
-if(!node.empty()){const nodeData=node.datum(); const transform=d3.zoomTransform(svg.node()); const scale=transform.k; const x=width/2-nodeData.x*scale; const y=height/2-nodeData.y*scale;
-svg.transition().duration(750).call(zoom.transform,d3.zoomIdentity.translate(x,y).scale(scale));}}
-
-// --- Дерево ---
+// Добавление/удаление боксов
 function addBox(){const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""}; treeNodes.push(box); update();}
 function deleteBox(){if(!selectedBox)return; treeNodes=treeNodes.filter(b=>b!==selectedBox); treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox); selectedBox=null; update();}
+
+// Создание связи мышкой
 function startRightLink(d){rightDragBox=d; dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
 function moveRightLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.x2=pt[0]; dragLine.y2=pt[1]; update();}}
 function endRightLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; rightDragBox=null; update();}
 
-// --- Обновление ---
+// Обновление визуализации
 const nodeGroup=g.append("g"), linkGroup=g.append("g");
 function update(){
 linkGroup.selectAll("*").remove(); nodeGroup.selectAll("*").remove();
-if(mode==="network"){
-const link=linkGroup.selectAll("line").data(links).join("line").attr("stroke",darkTheme?"#888":"#555").attr("stroke-width",2);
-const node=nodeGroup.selectAll("circle").data(nodes).join("circle").attr("r",20).attr("fill",d3.scaleOrdinal(d3.schemeCategory10)(d.group))
-.call(d3.drag().on("start",dragStart).on("drag",dragged).on("end",dragEnd));
-nodeGroup.selectAll("text").data(nodes).join("text").text(d=>d.id).attr("x",d=>d.x).attr("y",d=>d.y-25).attr("fill",darkTheme?"#fff":"#000").attr("text-anchor","middle");
-simulation.nodes(nodes).on("tick",ticked); simulation.force("link",d3.forceLink(links).id(d=>d.id).distance(150)); simulation.alpha(1).restart();
-}else{
-treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y).attr("stroke",darkTheme?"#888":"#555").attr("stroke-width",2));
+
+// связи
+treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
+
+// боксы
 treeNodes.forEach(b=>{
 const gNode=nodeGroup.append("g").call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update();}));
-gNode.append("rect").attr("class","box").attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h).attr("fill",darkTheme?"#333":"#ddd");
-gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y).attr("fill",darkTheme?"#fff":"#000").attr("text-anchor","middle").attr("dy",5);
-gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text);if(t!==null){b.text=t;update();}});
-gNode.on("mousedown",(event)=>{if(event.button===2){startRightLink(b);}else{selectedBox=b;}});
+gNode.append("rect").attr("class","box").classed("selected",b===selectedBox).attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h)
+.on("mousedown",(event)=>{if(event.button===2){startRightLink(b);}else{selectedBox=b; update();}});
+
+gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y+5);
+gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text); if(t!==null){b.text=t; update();}});
 });
-if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","red").attr("stroke-width",2);}}
+
+// линия drag
+if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","#00ffff").attr("stroke-width",2);}
 }
 
-// --- Drag для сети ---
-const simulation=d3.forceSimulation().force("charge",d3.forceManyBody().strength(-500)).force("center",d3.forceCenter(width/2,height/2));
-function ticked(){linkGroup.selectAll("line").attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
-nodeGroup.selectAll("circle").attr("cx",d=>d.x).attr("cy",d=>d.y); nodeGroup.selectAll("text").attr("x",d=>d.x).attr("y",d=>d.y-25);}
-function dragStart(event,d){if(!event.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y;}
-function dragged(event,d){d.fx=event.x; d.fy=event.y;}
-function dragEnd(event,d){if(!event.active) simulation.alphaTarget(0); d.fx=null; d.fy=null;}
-
-// --- Экспорт/Импорт ---
-function downloadJSON(){const data={nodes,links,treeNodes,treeLinks,mode,darkTheme}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
-function loadJSON(){const fileInput=document.createElement("input"); fileInput.type="file"; fileInput.accept=".json"; fileInput.onchange=()=>{const reader=new FileReader(); reader.onload=e=>{const data=JSON.parse(e.target.result);
-nodes=data.nodes||[];links=data.links||[];treeNodes=data.treeNodes||[];treeLinks=data.treeLinks||[];mode=data.mode||"network";darkTheme=data.darkTheme??true;updateMenu();update();}; reader.readAsText(fileInput.files[0]);}; fileInput.click();}
-function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas");
-canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const blob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(blob);
-img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
-function resetView(){svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity);}
-function toggleTheme(){darkTheme=!darkTheme;svg.style("background-color",darkTheme?"#121212":"#f0f0f0");updateMenu();update();}
+// Drag-события для линии
 svg.on("mousemove",moveRightLink).on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
 
-// Запрет контекстного меню на svg
-svg.on("contextmenu",event=>{event.preventDefault();});
+// Отключение контекстного меню
+svg.on("contextmenu",event=>event.preventDefault());
 
-updateMenu(); update();
+update();
 </script>
 </body>
 </html>
