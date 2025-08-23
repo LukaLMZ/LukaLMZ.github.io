@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Режим Древа</title>
+<title>Дерево с экспортом</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 body{margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#121212;color:#fff;}
@@ -24,6 +24,7 @@ text{fill:#fff;text-anchor:middle;pointer-events:none;font-size:14px;}
 <button onclick="deleteBox()">Удалить выбранный бокс</button>
 <button onclick="saveJSON()">Сохранить JSON</button>
 <button onclick="loadJSON()">Загрузить JSON</button>
+<button onclick="exportPNG()">Экспорт в PNG</button>
 <button onclick="showHelp()">Помощь</button>
 </div>
 <svg></svg>
@@ -33,41 +34,25 @@ const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
 const g=svg.append("g");
 let treeNodes=[], treeLinks=[], selectedBox=null, dragLine=null, rightDragBox=null;
 
-// --- Блокировка контекстного меню на всей странице ---
-document.addEventListener("contextmenu", event => event.preventDefault());
+// --- Блокировка контекстного меню ---
+document.addEventListener("contextmenu", e => e.preventDefault());
 
 // --- Меню ---
-function toggleMenu(){
-    const menu=document.getElementById("menu");
-    menu.style.display=(menu.style.display==="flex")?"none":"flex";
-}
-function showHelp(){
-    alert("Использование режима дерева:\n\n"+
-          "- Добавление бокса: кнопка 'Добавить бокс'\n"+
-          "- Выбор бокса: одиночный клик (выбранный бокс подсвечивается)\n"+
-          "- Редактирование текста: двойной клик по боксу\n"+
-          "- Перемещение бокса: зажмите и тяните левую кнопку мыши\n"+
-          "- Создание связи: правая кнопка мыши + drag на другой бокс\n"+
-          "- Удаление бокса: кнопка 'Удалить выбранный бокс'\n"+
-          "- Сохранение/Загрузка дерева: кнопки 'Сохранить JSON' / 'Загрузить JSON'\n"+
-          "- Автосохранение: все изменения сохраняются автоматически при работе с деревом");
-}
+function toggleMenu(){const menu=document.getElementById("menu"); menu.style.display=(menu.style.display==="flex")?"none":"flex";}
+function showHelp(){alert("Использование режима дерева:\n\n"+
+"- Добавление бокса: кнопка 'Добавить бокс'\n"+
+"- Выбор бокса: одиночный клик (выбранный бокс подсвечивается)\n"+
+"- Редактирование текста: двойной клик по боксу\n"+
+"- Перемещение бокса: зажмите и тяните левую кнопку мыши\n"+
+"- Создание связи: правая кнопка мыши + drag на другой бокс\n"+
+"- Удаление бокса: кнопка 'Удалить выбранный бокс'\n"+
+"- Сохранение/Загрузка дерева: кнопки 'Сохранить JSON' / 'Загрузить JSON'\n"+
+"- Экспорт в PNG: кнопка 'Экспорт в PNG'\n"+
+"- Автосохранение: все изменения сохраняются автоматически")}
 
 // --- Добавление/удаление боксов ---
-function addBox(){
-    const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""};
-    treeNodes.push(box);
-    update();
-    saveToLocal();
-}
-function deleteBox(){
-    if(!selectedBox) return;
-    treeNodes=treeNodes.filter(b=>b!==selectedBox);
-    treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox);
-    selectedBox=null;
-    update();
-    saveToLocal();
-}
+function addBox(){const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""}; treeNodes.push(box); update(); saveToLocal();}
+function deleteBox(){if(!selectedBox) return; treeNodes=treeNodes.filter(b=>b!==selectedBox); treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox); selectedBox=null; update(); saveToLocal();}
 
 // --- Создание связи мышкой ---
 function startRightLink(d){rightDragBox=d; dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
@@ -75,113 +60,56 @@ function moveRightLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.
 function endRightLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; rightDragBox=null; update(); saveToLocal();}
 
 // --- Сохранение/Загрузка JSON ---
-function saveJSON(){
-    const data={nodes:treeNodes,links:treeLinks.map(l=>({source:l.source.id,target:l.target.id}))};
-    const blob=new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download="tree.json"; a.click();
-    URL.revokeObjectURL(url);
-}
-function loadJSON(){
-    const input=document.createElement("input");
-    input.type="file"; input.accept=".json";
-    input.onchange=e=>{
-        const file=e.target.files[0];
-        const reader=new FileReader();
-        reader.onload=function(ev){
-            const data=JSON.parse(ev.target.result);
-            treeNodes=[];
-            treeLinks=[];
-            const nodeMap={};
-            data.nodes.forEach(n=>{
-                const box={id:n.id,x:n.x,y:n.y,w:n.w,h:n.h,text:n.text};
-                treeNodes.push(box);
-                nodeMap[box.id]=box;
-            });
-            data.links.forEach(l=>{
-                if(nodeMap[l.source] && nodeMap[l.target]){
-                    treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});
-                }
-            });
-            selectedBox=null; update(); saveToLocal();
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
+function saveJSON(){const data={nodes:treeNodes,links:treeLinks.map(l=>({source:l.source.id,target:l.target.id}))}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url;a.download="tree.json";a.click();URL.revokeObjectURL(url);}
+function loadJSON(){const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=e=>{const file=e.target.files[0]; const reader=new FileReader(); reader.onload=function(ev){const data=JSON.parse(ev.target.result); treeNodes=[]; treeLinks=[]; const nodeMap={}; data.nodes.forEach(n=>{const box={id:n.id,x:n.x,y:n.y,w:n.w,h:n.h,text:n.text}; treeNodes.push(box); nodeMap[box.id]=box;}); data.links.forEach(l=>{if(nodeMap[l.source] && nodeMap[l.target]){treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});}}); selectedBox=null; update(); saveToLocal();}; reader.readAsText(file);}; input.click();}
 
-// --- Автосохранение в localStorage ---
-function saveToLocal(){
-    const data={nodes:treeNodes,links:treeLinks.map(l=>({source:l.source.id,target:l.target.id}))};
-    localStorage.setItem("treeData", JSON.stringify(data));
-}
-function loadFromLocal(){
-    const data=localStorage.getItem("treeData");
-    if(data){
-        const parsed=JSON.parse(data);
-        treeNodes=[]; treeLinks=[];
-        const nodeMap={};
-        parsed.nodes.forEach(n=>{
-            const box={id:n.id,x:n.x,y:n.y,w:n.w,h:n.h,text:n.text};
-            treeNodes.push(box);
-            nodeMap[box.id]=box;
-        });
-        parsed.links.forEach(l=>{
-            if(nodeMap[l.source] && nodeMap[l.target]){
-                treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});
-            }
-        });
-        selectedBox=null;
-    }
+// --- Автосохранение ---
+function saveToLocal(){const data={nodes:treeNodes,links:treeLinks.map(l=>({source:l.source.id,target:l.target.id}))}; localStorage.setItem("treeData",JSON.stringify(data));}
+function loadFromLocal(){const data=localStorage.getItem("treeData"); if(data){const parsed=JSON.parse(data); treeNodes=[];treeLinks=[]; const nodeMap={}; parsed.nodes.forEach(n=>{const box={id:n.id,x:n.x,y:n.y,w:n.w,h:n.h,text:n.text}; treeNodes.push(box); nodeMap[box.id]=box;}); parsed.links.forEach(l=>{if(nodeMap[l.source] && nodeMap[l.target]){treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});}}); selectedBox=null;}}
+
+// --- Экспорт в PNG ---
+function exportPNG(){
+    const serializer=new XMLSerializer();
+    const source=serializer.serializeToString(svg.node());
+    const image=new Image();
+    image.onload=function(){
+        const canvas=document.createElement("canvas");
+        canvas.width=width; canvas.height=height;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#121212"; ctx.fillRect(0,0,width,height);
+        ctx.drawImage(image,0,0);
+        const link=document.createElement("a");
+        link.download="tree.png";
+        link.href=canvas.toDataURL("image/png");
+        link.click();
+    };
+    image.src='data:image/svg+xml;base64,'+btoa(source);
 }
 
 // --- Обновление визуализации ---
 const nodeGroup=g.append("g"), linkGroup=g.append("g");
+const zoom=d3.zoom().scaleExtent([0.2,5]).on("zoom",e=>g.attr("transform",e.transform));
+svg.call(zoom);
+
 function update(){
     linkGroup.selectAll("*").remove();
     nodeGroup.selectAll("*").remove();
 
     treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
-
     treeNodes.forEach(b=>{
-        const gNode=nodeGroup.append("g")
-            .call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
-        
-        gNode.append("rect")
-            .attr("class","box")
-            .classed("selected",b===selectedBox)
-            .attr("x",b.x-b.w/2)
-            .attr("y",b.y-b.h/2)
-            .attr("width",b.w)
-            .attr("height",b.h)
-            .on("mousedown",(event)=>{
-                if(event.button===2){startRightLink(b);}
-                else{selectedBox=b; update();}
-            });
-        
+        const gNode=nodeGroup.append("g").call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
+        gNode.append("rect").attr("class","box").classed("selected",b===selectedBox)
+            .attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h)
+            .on("mousedown",event=>{if(event.button===2){startRightLink(b);} else{selectedBox=b; update();}});
         gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y+5);
-
-        gNode.on("dblclick",()=>{
-            const t=prompt("Введите текст:",b.text);
-            if(t!==null){b.text=t; update(); saveToLocal();}
-        });
+        gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text); if(t!==null){b.text=t; update(); saveToLocal();}});
     });
 
-    if(dragLine){
-        linkGroup.append("line")
-            .attr("x1",dragLine.x1)
-            .attr("y1",dragLine.y1)
-            .attr("x2",dragLine.x2)
-            .attr("y2",dragLine.y2)
-            .attr("stroke","#00ffff")
-            .attr("stroke-width",2);
-    }
+    if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","#00ffff").attr("stroke-width",2);}
 }
 
 // --- Drag-события для линии ---
-svg.on("mousemove",moveRightLink)
-   .on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
+svg.on("mousemove",moveRightLink).on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
 
 loadFromLocal();
 update();
