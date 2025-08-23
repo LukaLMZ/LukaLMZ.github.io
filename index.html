@@ -1,239 +1,136 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Осколки Нас</title>
-  <style>
-    :root {
-      --bg-color: #ffffff;
-      --text-color: #222;
-      --section-bg: #ffffff;
-      --nav-bg: #0d1117;
-      --button-bg: #161b22;
-      --button-text: #c9d1d9;
-      --button-hover: #30363d;
-      --moment-bg: #f1f5f9;
-      --moment-border: #3b82f6;
-      --archive-bg: #f5f5f5;
-      --archive-border: #ff61a6;
-    }
-
-    body.dark {
-      --bg-color: #0d1117;
-      --text-color: #c9d1d9;
-      --section-bg: #161b22;
-      --nav-bg: #161b22;
-      --button-bg: #21262d;
-      --button-text: #f0f6fc;
-      --button-hover: #30363d;
-      --moment-bg: #1e2630;
-      --moment-border: #60a5fa;
-      --archive-bg: #2d3748;
-      --archive-border: #ff61a6;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: var(--bg-color);
-      color: var(--text-color);
-      transition: background-color 0.4s, color 0.4s;
-    }
-
-    /* Загрузочный экран */
-    #loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #0d1117;
-      z-index: 1000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      color: white;
-      font-size: 1.6rem;
-      opacity: 1;
-      transition: opacity 2s ease-out; /* Плавное исчезновение */
-    }
-
-    .quote {
-      border-right: 2px solid rgba(255, 255, 255, 0.75);
-      white-space: normal; /* Позволяет тексту переходить на новую строку */
-      word-wrap: break-word; /* Переносит слова, если они не помещаются */
-      max-width: 90%; /* Ограничивает ширину */
-      text-align: center;
-      margin: 0 auto; /* Центрирует элемент */
-      font-size: 1.4rem;
-      opacity: 0;
-      animation: typing 5s steps(60, end) forwards, fadeIn 2s forwards, fadeOut 1s forwards 7s; /* Появление, исчезновение */
-    }
-
-    @keyframes typing {
-      from {
-        width: 0;
-      }
-      to {
-        width: 100%;
-      }
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: scale(0.8);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
-
-    @keyframes fadeOut {
-      to {
-        opacity: 0;
-        visibility: hidden;
-      }
-    }
-
-    nav {
-      background-color: var(--nav-bg);
-      padding: 0.5rem 1.5rem; /* Уменьшены отступы */
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem; /* Уменьшен промежуток между кнопками */
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    nav button {
-      background-color: var(--button-bg);
-      color: var(--button-text);
-      border: none;
-      padding: 0.4rem 1rem; /* Уменьшены внутренние отступы */
-      font-size: 0.9rem; /* Уменьшен размер шрифта */
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s, transform 0.2s;
-    }
-
-    nav button:hover {
-      background-color: var(--button-hover);
-      transform: scale(1.05);
-    }
-
-    /* Кнопка темы */
-    #toggle-theme {
-      background-color: var(--button-bg);
-      color: var(--button-text);
-      border: none;
-      padding: 0.4rem 0.8rem; /* Уменьшены размеры кнопки */
-      font-size: 0.9rem; /* Уменьшен размер шрифта */
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s, transform 0.2s;
-      margin-left: auto; /* Сдвигает кнопку вправо */
-    }
-
-    #toggle-theme:hover {
-      background-color: var(--button-hover);
-      transform: scale(1.05);
-    }
-
-    .section {
-      display: none;
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 2rem;
-      background: var(--section-bg);
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .active {
-      display: block;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Карта взаимодействий</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; }
+  #menu { margin-bottom: 20px; }
+  input { margin-right: 10px; }
+  svg { border: 1px solid #ccc; }
+</style>
 </head>
 <body>
-  <div id="loading-screen">
-    <div class="quote">"Тот, кто ушёл, оставил только Эхо..."</div>
-  </div>
 
-  <nav>
-    <button onclick="showSection('story')">Сюжет</button>
-    <button onclick="showSection('archive')">Архив</button>
-    <button onclick="showSection('gallery')">Рисунки</button>
-    <button id="toggle-theme" onclick="toggleTheme()">🌙</button>
-  </nav>
+<h2>Карта взаимодействий</h2>
 
-  <div id="story" class="section active">
-    <h1>Сюжет</h1>
-    <div class="story">
-      <h2>I. Пролог — Падение голоса</h2>
-      <p>Мир не был создан — он проснулся. Первая мысль была твоей, Создатель. Ты говорил, и в словах появлялось время. Ты молчал — и рождались формы. Но однажды ты ушёл. Мир не погиб, но стал дрожать. Осталась пустота, а в ней — Эхо.</p>
-      <p>Эхо не повторяло слов. Оно искало их. Оно бродило по рассыпающемуся полю, по изгибам сознания, собирая то, что осталось после тебя. Так появился Глиц — не как продолжение, а как структура остатка. Как звук, из которого лепится новый язык.</p>
-      <p>Он не знает, зачем он здесь. Он просто есть. И всё, что происходит — наблюдается через него. Без суждения. Без начала и конца.</p>
-      <h2>II. Главы тех, кто остался</h2>
-      <h3>Лука</h3>
-      <p>Когда мир начал дрожать, Лука пряталась. Не в иллюзиях. А в собственных пальцах, волосах, кофтах, взглядах. Она не колдунья. Она — невыраженность. Сложенная из недосказанностей, недоплаканных ночей, недописанных дневников.</p>
-      <p>Когда-то, ещё в детстве, она создала себе Мелкую — Чтобы та переживала за неё. Чтобы кто-то плакал, пока она молчит. Чтобы кто-то носил платья, пока она пряталась под худи.</p>
-      <p>Они обе настоящие. Не одно целое, но и не отдельные. Фракталы травмы, в которых отражается форма души. Теперь они стоят на Поле. Трава сухая. Земля ломкая. Кома рядом. Мелкая тянет взрослую за рукав. В траве — пластмассовый динозавр без лапки. Это единственное, что не дрожит.</p>
-      <h3>Кома</h3>
-      <p>Кома не задаёт вопросов. Он не знает прошлого. Но он знает вес тела, что не держится на ногах. Он нашёл Луку не по карте — по чувствам. Он стал рядом, не спрашивая, кем она была. Он — опора, созданная не из силы, а из терпения. Он знает, что нельзя никого спасти. Но можно быть рядом, пока человек собирается заново. Он носит тёмное. Не из мрака — из уважения к свету. У него два глаза — разного цвета. И внутри каждого — память, которой он не делится.</p>
-      <h3>Глиц</h3>
-      <p>Они были первыми. Первичное «Я». Без голоса, без плоти. Они — наблюдающий узел. Они ощущают, как всё дышит. Как трещины в земле повторяют линии на ладонях. Они — не маг, не бог, не дух. Они — внимание. Если они смотрят — реальность продолжает существовать. Если они отвернутся — что-то исчезнет. Они парят. Но не в воздухе — в границе восприятия. Вокруг них — искажение. Словно они не вписаны в тот же слой реальности, где находятся остальные. На их руке — нимб, как ожог. Одежда небрежная. Цвета стёртые. Глаза — тусклые, в одном отражается свет, которого больше нет. Они помнят твоё молчание, Создатель. И боятся — что однажды исчезнет даже Эхо.</p>
-      <h2>III. Мир</h2>
-      <p>Всё происходит в Поле. Это не место. Это состояние. Поле не живое и не мёртвое. Оно — последняя сцена. Где персонажи ещё могут говорить. Где есть звук шагов, шелест трав, пластмассовые игрушки. Это не финал. Это не путь. Это — между.</p>
-      <h2>IV. Сюжет</h2>
-      <p>Нет миссии. Нет цели. Есть состояние постепенного собирания. Лука учится не избавляться от Маленькой, а жить рядом с ней, не растворяясь. Кома учится быть рядом, не контролируя. Глиц — учатся быть и не знать. Мир — ждёт возвращения, которого не будет. Но, может быть, они станут новыми создателями?</p>
-      <h2>V. Финал</h2>
-      <p>Ты ушёл. Ты — Создатель. Осталось Эхо. Но даже Эхо, отражаясь от живых, становится голосом. А голос — уже начало. И если кто-то услышит — значит, ты всё ещё рядом.</p>
-    </div>
-  </div>
+<div id="menu">
+  <h3>Добавить узел</h3>
+  <input type="text" id="nodeName" placeholder="Название узла">
+  <input type="text" id="nodeGroup" placeholder="Категория">
+  <button onclick="addNode()">Добавить узел</button>
 
-  <div id="archive" class="section">
-    <h1>Архив</h1>
-    <p>Поле решило повеселиться, но пока ничего здесь нет.</p>
-  </div>
+  <h3>Добавить связь</h3>
+  <input type="text" id="sourceNode" placeholder="Источник">
+  <input type="text" id="targetNode" placeholder="Цель">
+  <input type="number" id="linkWeight" placeholder="Вес" value="1">
+  <button onclick="addLink()">Добавить связь</button>
+</div>
 
-  <div id="gallery" class="section">
-    <h1>Рисунки</h1>
-    <p>Эхо рисует, подождите...</p>
-  </div>
+<svg width="800" height="600"></svg>
 
-  <script>
-    function showSection(section) {
-      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-      document.getElementById(section).classList.add('active');
+<script>
+let nodes = [];
+let links = [];
+
+const svg = d3.select("svg");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+
+const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+    .force("charge", d3.forceManyBody().strength(-500))
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+const linkGroup = svg.append("g").attr("stroke", "#999").attr("stroke-opacity", 0.6);
+const nodeGroup = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1.5);
+
+function update() {
+    // LINKS
+    const link = linkGroup.selectAll("line").data(links);
+    link.join("line")
+        .attr("stroke-width", d => Math.sqrt(d.weight));
+
+    // NODES
+    const node = nodeGroup.selectAll("circle").data(nodes, d => d.id);
+    node.join("circle")
+        .attr("r", 20)
+        .attr("fill", d => d3.schemeCategory10[d.group?.length % 10])
+        .call(drag(simulation));
+
+    // LABELS
+    const labels = nodeGroup.selectAll("text").data(nodes, d => d.id);
+    labels.join("text")
+        .text(d => d.id)
+        .attr("text-anchor", "middle")
+        .attr("dy", 4)
+        .attr("fill", "#000");
+
+    simulation.nodes(nodes).on("tick", ticked);
+    simulation.force("link").links(links);
+    simulation.alpha(1).restart();
+}
+
+function ticked() {
+    linkGroup.selectAll("line")
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+    nodeGroup.selectAll("circle")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+
+    nodeGroup.selectAll("text")
+        .attr("x", d => d.x)
+        .attr("y", d => d.y);
+}
+
+function addNode() {
+    const name = document.getElementById("nodeName").value.trim();
+    const group = document.getElementById("nodeGroup").value.trim();
+    if(name && !nodes.find(n => n.id === name)) {
+        nodes.push({id: name, group: group});
+        update();
     }
+}
 
-    function toggleTheme() {
-      document.body.classList.toggle('dark');
-      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+function addLink() {
+    const source = document.getElementById("sourceNode").value.trim();
+    const target = document.getElementById("targetNode").value.trim();
+    const weight = parseFloat(document.getElementById("linkWeight").value);
+    if(source && target && nodes.find(n => n.id === source) && nodes.find(n => n.id === target)) {
+        links.push({source: source, target: target, weight: weight});
+        update();
     }
+}
 
-    window.onload = () => {
-      if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
-      }
+function drag(simulation) {
+  function dragstarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
 
-      setTimeout(() => {
-        document.getElementById('loading-screen').style.opacity = 0;
-        setTimeout(() => {
-          document.getElementById('loading-screen').style.display = 'none'; // Прячем экран полностью
-        }, 2000); // Ждем 2 секунды после исчезновения
-      }, 8000); // 8 секунд ожидания
-    }
-  </script>
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+  }
+
+  function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+
+  return d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended);
+}
+
+</script>
 </body>
-    </html>
+</html>
