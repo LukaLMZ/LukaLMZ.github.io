@@ -11,13 +11,13 @@ svg{width:100vw;height:100vh;display:block;}
 #menuButton:hover{background:#555;}
 #modeButton{position:absolute;bottom:15px;right:15px;background:#3b3b3b;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
 #modeButton:hover{background:#555;}
-#menu{position:absolute;top:50px;left:50px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:350px;z-index:10;}
+#menu{position:absolute;top:50px;left:50px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:350px;z-index:10;max-height:70vh;overflow-y:auto;}
 #menu h3{margin:5px 0;}
 #menu input,#menu button,#menu select{padding:5px;border-radius:4px;border:none;}
 #menu button{cursor:pointer;}
 .tooltip{position:absolute;background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none;opacity:0;transition:0.2s;}
 text{transform-origin:center;}
-.box{fill:#555;stroke:#888;stroke-width:2;cursor:move;}
+.box{fill:#555;stroke:#888;stroke-width:2;cursor:pointer;}
 .line{stroke:#888;stroke-width:2;}
 </style>
 </head>
@@ -33,7 +33,7 @@ let nodes=[], links=[], treeNodes=[], treeLinks=[];
 let darkTheme=true, mode="network";
 const svg=d3.select("svg"), width=window.innerWidth, height=window.innerHeight;
 const g=svg.append("g"), tooltip=d3.select("#tooltip");
-let selectedBox=null, dragLine=null;
+let selectedBox=null, dragLine=null, rightDragBox=null;
 
 // Zoom и drag
 const zoom=d3.zoom().scaleExtent([0.1,5]).on("zoom",e=>g.attr("transform",e.transform));
@@ -94,9 +94,10 @@ text=`Сетевой режим:
 - Сохраняемая сессия сохраняет расположение узлов.`;
 }else{
 text=`Режим дерева:
+- Одиночный клик по боксу — выбрать его.
+- Правая кнопка мыши и перетаскивание — создать связь между боксами.
 - Нажмите "Добавить бокс", чтобы создать пустой прямоугольник.
 - Двойной клик по боксу — добавить текст.
-- Создание связи: нажмите и тяните мышью от одного бокса к другому.
 - Боксы можно перемещать мышью, связи подстраиваются автоматически.
 - Скачивайте карту в JSON или PNG.
 - Меню минимальное, все остальные функции недоступны в дереве.`;
@@ -135,9 +136,9 @@ svg.transition().duration(750).call(zoom.transform,d3.zoomIdentity.translate(x,y
 // --- Дерево ---
 function addBox(){const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""}; treeNodes.push(box); update();}
 function deleteBox(){if(!selectedBox)return; treeNodes=treeNodes.filter(b=>b!==selectedBox); treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox); selectedBox=null; update();}
-function startLink(d){dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
-function moveLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.x2=pt[0]; dragLine.y2=pt[1]; update();}}
-function endLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; update();}
+function startRightLink(d){rightDragBox=d; dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
+function moveRightLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.x2=pt[0]; dragLine.y2=pt[1]; update();}}
+function endRightLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; rightDragBox=null; update();}
 
 // --- Обновление ---
 const nodeGroup=g.append("g"), linkGroup=g.append("g");
@@ -156,7 +157,8 @@ const gNode=nodeGroup.append("g").call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; 
 gNode.append("rect").attr("class","box").attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h).attr("fill",darkTheme?"#333":"#ddd");
 gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y).attr("fill",darkTheme?"#fff":"#000").attr("text-anchor","middle").attr("dy",5);
 gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text);if(t!==null){b.text=t;update();}});
-gNode.on("mousedown",()=>selectedBox=b);});
+gNode.on("mousedown",(event)=>{if(event.button===2){startRightLink(b);}else{selectedBox=b;}});
+});
 if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","red").attr("stroke-width",2);}}
 }
 
@@ -177,7 +179,10 @@ canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.g
 img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
 function resetView(){svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity);}
 function toggleTheme(){darkTheme=!darkTheme;svg.style("background-color",darkTheme?"#121212":"#f0f0f0");updateMenu();update();}
-svg.on("mousemove",moveLink).on("mouseup",()=>{if(dragLine)dragLine=null; update();});
+svg.on("mousemove",moveRightLink).on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
+
+// Запрет контекстного меню на svg
+svg.on("contextmenu",event=>{event.preventDefault();});
 
 updateMenu(); update();
 </script>
