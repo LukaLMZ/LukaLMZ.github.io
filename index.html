@@ -5,45 +5,55 @@
 <title>Карта взаимодействий</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; }
-  #menu { margin-bottom: 20px; }
-  input { margin-right: 10px; }
-  svg { border: 1px solid #ccc; }
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background-color:#121212; color:#fff; }
+  #menu { padding: 20px; background-color:#1f1f1f; display:flex; flex-wrap: wrap; gap:10px; }
+  input, button { padding:5px; margin-right:5px; border-radius:4px; border:none; }
+  button { cursor:pointer; background-color:#3b3b3b; color:#fff; }
+  button:hover { background-color:#555; }
+  svg { width:100vw; height:calc(100vh - 120px); display:block; }
 </style>
 </head>
 <body>
 
-<h2>Карта взаимодействий</h2>
-
 <div id="menu">
-  <h3>Добавить узел</h3>
-  <input type="text" id="nodeName" placeholder="Название узла">
-  <input type="text" id="nodeGroup" placeholder="Категория">
-  <button onclick="addNode()">Добавить узел</button>
+  <div>
+    <h3>Добавить узел</h3>
+    <input type="text" id="nodeName" placeholder="Название узла">
+    <input type="text" id="nodeGroup" placeholder="Категория">
+    <button onclick="addNode()">Добавить</button>
+  </div>
 
-  <h3>Добавить связь</h3>
-  <input type="text" id="sourceNode" placeholder="Источник">
-  <input type="text" id="targetNode" placeholder="Цель">
-  <input type="number" id="linkWeight" placeholder="Вес" value="1">
-  <button onclick="addLink()">Добавить связь</button>
+  <div>
+    <h3>Удалить узел</h3>
+    <input type="text" id="deleteNodeName" placeholder="Название узла">
+    <button onclick="deleteNode()">Удалить</button>
+  </div>
+
+  <div>
+    <h3>Добавить связь</h3>
+    <input type="text" id="sourceNode" placeholder="Источник">
+    <input type="text" id="targetNode" placeholder="Цель">
+    <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
+    <button onclick="addLink()">Добавить</button>
+  </div>
 </div>
 
-<svg width="800" height="600"></svg>
+<svg></svg>
 
 <script>
 let nodes = [];
 let links = [];
 
 const svg = d3.select("svg");
-const width = +svg.attr("width");
-const height = +svg.attr("height");
+const width = window.innerWidth;
+const height = window.innerHeight - 120;
 
 const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).distance(150))
     .force("charge", d3.forceManyBody().strength(-500))
     .force("center", d3.forceCenter(width / 2, height / 2));
 
-const linkGroup = svg.append("g").attr("stroke", "#999").attr("stroke-opacity", 0.6);
+const linkGroup = svg.append("g").attr("stroke", "#888").attr("stroke-opacity", 0.6);
 const nodeGroup = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1.5);
 
 function update() {
@@ -64,8 +74,10 @@ function update() {
     labels.join("text")
         .text(d => d.id)
         .attr("text-anchor", "middle")
-        .attr("dy", 4)
-        .attr("fill", "#000");
+        .attr("dy", -25)
+        .attr("fill", "#fff")
+        .attr("font-size", "12px")
+        .attr("pointer-events", "none");
 
     simulation.nodes(nodes).on("tick", ticked);
     simulation.force("link").links(links);
@@ -85,7 +97,7 @@ function ticked() {
 
     nodeGroup.selectAll("text")
         .attr("x", d => d.x)
-        .attr("y", d => d.y);
+        .attr("y", d => d.y - 25);
 }
 
 function addNode() {
@@ -95,6 +107,14 @@ function addNode() {
         nodes.push({id: name, group: group});
         update();
     }
+}
+
+function deleteNode() {
+    const name = document.getElementById("deleteNodeName").value.trim();
+    if(!name) return;
+    nodes = nodes.filter(n => n.id !== name);
+    links = links.filter(l => l.source.id !== name && l.target.id !== name);
+    update();
 }
 
 function addLink() {
@@ -131,6 +151,12 @@ function drag(simulation) {
       .on("end", dragended);
 }
 
+// Обновление размера окна
+window.addEventListener("resize", () => {
+    svg.attr("width", window.innerWidth).attr("height", window.innerHeight - 120);
+    simulation.force("center", d3.forceCenter(window.innerWidth / 2, (window.innerHeight-120)/2));
+    simulation.alpha(1).restart();
+});
 </script>
 </body>
 </html>
