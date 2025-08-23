@@ -135,19 +135,47 @@ function update(){
     treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
 
     treeNodes.forEach(b=>{
-        const gNode=nodeGroup.append("g")
-            .call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
+        const gNode=nodeGroup.append("g");
 
-        gNode.append("rect").attr("class","box").classed("selected",b===selectedBox)
-            .attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h)
-            .on("mousedown",event=>{if(event.button===2){startRightLink(b);} else{selectedBox=b; update();}});
+        // Drag
+        gNode.call(d3.drag()
+            .on("drag", e=>{
+                b.x=e.x; b.y=e.y;
+                update(); saveToLocal();
+            })
+        );
 
-        gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y+5);
+        // Rectangle
+        gNode.append("rect")
+            .attr("class","box")
+            .classed("selected", b===selectedBox)
+            .attr("x", b.x-b.w/2)
+            .attr("y", b.y-b.h/2)
+            .attr("width", b.w)
+            .attr("height", b.h)
+            .on("mousedown", event=>{
+                if(event.button===2){ startRightLink(b); }
+                else{ selectedBox=b; update(); }
+            })
+            .on("dblclick", event=>{
+                event.stopPropagation();
+                const t=prompt("Введите текст:", b.text);
+                if(t!==null){ b.text=t; update(); saveToLocal(); }
+            });
 
-        gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text); if(t!==null){b.text=t; update(); saveToLocal();}});
+        // Text
+        gNode.append("text").text(b.text).attr("x", b.x).attr("y", b.y+5);
     });
 
-    if(dragLine){linkGroup.append("line").attr("x1",dragLine.x1).attr("y1",dragLine.y1).attr("x2",dragLine.x2).attr("y2",dragLine.y2).attr("stroke","#00ffff").attr("stroke-width",2);}
+    if(dragLine){
+        linkGroup.append("line")
+            .attr("x1",dragLine.x1)
+            .attr("y1",dragLine.y1)
+            .attr("x2",dragLine.x2)
+            .attr("y2",dragLine.y2)
+            .attr("stroke","#00ffff")
+            .attr("stroke-width",2);
+    }
 }
 
 // --- Drag-события для линии ---
