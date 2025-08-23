@@ -10,7 +10,7 @@
   input, button { padding:5px; margin-right:5px; border-radius:4px; border:none; }
   button { cursor:pointer; background-color:#3b3b3b; color:#fff; }
   button:hover { background-color:#555; }
-  svg { width:100vw; height:calc(100vh - 120px); display:block; }
+  svg { width:100vw; height:calc(100vh - 120px); display:block; background-color:#121212; }
 </style>
 </head>
 <body>
@@ -36,6 +36,12 @@
     <input type="number" id="linkWeight" placeholder="Вес" value="1" style="width:60px;">
     <button onclick="addLink()">Добавить</button>
   </div>
+
+  <div>
+    <h3>Сохранить карту</h3>
+    <button onclick="downloadJSON()">Скачать JSON</button>
+    <button onclick="downloadPNG()">Скачать PNG</button>
+  </div>
 </div>
 
 <svg></svg>
@@ -57,19 +63,16 @@ const linkGroup = svg.append("g").attr("stroke", "#888").attr("stroke-opacity", 
 const nodeGroup = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1.5);
 
 function update() {
-    // LINKS
     const link = linkGroup.selectAll("line").data(links);
     link.join("line")
         .attr("stroke-width", d => Math.sqrt(d.weight));
 
-    // NODES
     const node = nodeGroup.selectAll("circle").data(nodes, d => d.id);
     node.join("circle")
         .attr("r", 20)
         .attr("fill", d => d3.schemeCategory10[d.group?.length % 10])
         .call(drag(simulation));
 
-    // LABELS
     const labels = nodeGroup.selectAll("text").data(nodes, d => d.id);
     labels.join("text")
         .text(d => d.id)
@@ -127,31 +130,59 @@ function addLink() {
     }
 }
 
+// ------------------ Drag ------------------
 function drag(simulation) {
   function dragstarted(event, d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
   }
-
-  function dragged(event, d) {
-    d.fx = event.x;
-    d.fy = event.y;
-  }
-
+  function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
   function dragended(event, d) {
     if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
+    d.fx = null; d.fy = null;
   }
-
-  return d3.drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended);
+  return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
 }
 
-// Обновление размера окна
+// ------------------ Скачивание JSON ------------------
+function downloadJSON() {
+    const dataStr = JSON.stringify({nodes: nodes, links: links}, null, 2);
+    const blob = new Blob([dataStr], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "map.json";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ------------------ Скачивание PNG ------------------
+function downloadPNG() {
+    const serializer = new XMLSerializer();
+    const svgNode = svg.node();
+    const svgString = serializer.serializeToString(svgNode);
+    const canvas = document.createElement("canvas");
+    canvas.width = svgNode.clientWidth;
+    canvas.height = svgNode.clientHeight;
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    const svgBlob = new Blob([svgString], {type:"image/svg+xml;charset=utf-8"});
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = function() {
+        ctx.fillStyle = "#121212";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img,0,0);
+        URL.revokeObjectURL(url);
+        const pngLink = document.createElement("a");
+        pngLink.download = "map.png";
+        pngLink.href = canvas.toDataURL("image/png");
+        pngLink.click();
+    }
+    img.src = url;
+}
+
+// ------------------ Resize ------------------
 window.addEventListener("resize", () => {
     svg.attr("width", window.innerWidth).attr("height", window.innerHeight - 120);
     simulation.force("center", d3.forceCenter(window.innerWidth / 2, (window.innerHeight-120)/2));
