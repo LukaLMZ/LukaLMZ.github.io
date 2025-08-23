@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Дерево с экспортом</title>
+<title>Дерево с поиском и центрированием</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 body{margin:0;overflow:hidden;font-family:Arial,sans-serif;background:#121212;color:#fff;}
@@ -10,6 +10,8 @@ svg{width:100vw;height:100vh;display:block;cursor:default;}
 #menuButton{position:absolute;top:15px;left:15px;background:#333;color:#fff;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;z-index:10;}
 #menuButton:hover{background:#555;}
 #menu{position:absolute;top:50px;left:15px;padding:20px;border-radius:8px;display:none;flex-direction:column;gap:10px;max-width:250px;z-index:10;max-height:70vh;overflow-y:auto;background:#1f1f1f;}
+#menu h4{margin:10px 0 5px 0;border-bottom:1px solid #555;padding-bottom:2px;}
+#menu input{padding:5px;border:none;border-radius:4px;width:100%;}
 #menu button{cursor:pointer;padding:5px;border:none;border-radius:4px;}
 .box{fill:#333;stroke:#888;stroke-width:2;cursor:pointer;}
 .box.selected{stroke:#00ffff;stroke-width:3;}
@@ -20,13 +22,24 @@ text{fill:#fff;text-anchor:middle;pointer-events:none;font-size:14px;}
 <body>
 <button id="menuButton" onclick="toggleMenu()">☰ Меню</button>
 <div id="menu">
+<h4>Управление</h4>
 <button onclick="addBox()">Добавить бокс</button>
 <button onclick="deleteBox()">Удалить выбранный бокс</button>
+<button onclick="centerTree()">Центрировать дерево</button>
+
+<h4>Экспорт / Сохранение</h4>
 <button onclick="saveJSON()">Сохранить JSON</button>
 <button onclick="loadJSON()">Загрузить JSON</button>
 <button onclick="exportPNG()">Экспорт в PNG</button>
+
+<h4>Поиск</h4>
+<input type="text" id="searchInput" placeholder="Поиск по тексту">
+<button onclick="searchNode()">Найти</button>
+
+<h4>Помощь</h4>
 <button onclick="showHelp()">Помощь</button>
 </div>
+
 <svg></svg>
 
 <script>
@@ -46,8 +59,10 @@ function showHelp(){alert("Использование режима дерева:
 "- Перемещение бокса: зажмите и тяните левую кнопку мыши\n"+
 "- Создание связи: правая кнопка мыши + drag на другой бокс\n"+
 "- Удаление бокса: кнопка 'Удалить выбранный бокс'\n"+
+"- Центрирование дерева: кнопка 'Центрировать дерево'\n"+
 "- Сохранение/Загрузка дерева: кнопки 'Сохранить JSON' / 'Загрузить JSON'\n"+
 "- Экспорт в PNG: кнопка 'Экспорт в PNG'\n"+
+"- Поиск узла: введите текст и нажмите 'Найти'\n"+
 "- Автосохранение: все изменения сохраняются автоматически")}
 
 // --- Добавление/удаление боксов ---
@@ -86,6 +101,28 @@ function exportPNG(){
     image.src='data:image/svg+xml;base64,'+btoa(source);
 }
 
+// --- Центрирование дерева ---
+function centerTree(){
+    if(treeNodes.length===0) return;
+    const minX=Math.min(...treeNodes.map(n=>n.x)), maxX=Math.max(...treeNodes.map(n=>n.x));
+    const minY=Math.min(...treeNodes.map(n=>n.y)), maxY=Math.max(...treeNodes.map(n=>n.y));
+    const centerX=(minX+maxX)/2, centerY=(minY+maxY)/2;
+    const scale=d3.zoomTransform(svg.node()).k;
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width/2 - centerX*scale, height/2 - centerY*scale).scale(scale));
+}
+
+// --- Поиск по тексту ---
+function searchNode(){
+    const val=document.getElementById("searchInput").value.toLowerCase().trim();
+    if(!val) return;
+    const node=treeNodes.find(n=>n.text.toLowerCase().includes(val));
+    if(node){
+        selectedBox=node; update();
+        const scale=d3.zoomTransform(svg.node()).k;
+        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(width/2 - node.x*scale, height/2 - node.y*scale).scale(scale));
+    } else {alert("Узел не найден");}
+}
+
 // --- Обновление визуализации ---
 const nodeGroup=g.append("g"), linkGroup=g.append("g");
 const zoom=d3.zoom().scaleExtent([0.2,5]).on("zoom",e=>g.attr("transform",e.transform));
@@ -96,12 +133,17 @@ function update(){
     nodeGroup.selectAll("*").remove();
 
     treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
+
     treeNodes.forEach(b=>{
-        const gNode=nodeGroup.append("g").call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
+        const gNode=nodeGroup.append("g")
+            .call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
+
         gNode.append("rect").attr("class","box").classed("selected",b===selectedBox)
             .attr("x",b.x-b.w/2).attr("y",b.y-b.h/2).attr("width",b.w).attr("height",b.h)
             .on("mousedown",event=>{if(event.button===2){startRightLink(b);} else{selectedBox=b; update();}});
+
         gNode.append("text").text(b.text).attr("x",b.x).attr("y",b.y+5);
+
         gNode.on("dblclick",()=>{const t=prompt("Введите текст:",b.text); if(t!==null){b.text=t; update(); saveToLocal();}});
     });
 
