@@ -49,7 +49,8 @@ function showHelp(){
           "- Перемещение бокса: зажмите и тяните левую кнопку мыши\n"+
           "- Создание связи: правая кнопка мыши + drag на другой бокс\n"+
           "- Удаление бокса: кнопка 'Удалить выбранный бокс'\n"+
-          "- Сохранение/Загрузка дерева: кнопки 'Сохранить JSON' / 'Загрузить JSON'");
+          "- Сохранение/Загрузка дерева: кнопки 'Сохранить JSON' / 'Загрузить JSON'\n"+
+          "- Автосохранение: все изменения сохраняются автоматически при работе с деревом");
 }
 
 // --- Добавление/удаление боксов ---
@@ -57,6 +58,7 @@ function addBox(){
     const box={id:"box"+(treeNodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,w:120,h:50,text:""};
     treeNodes.push(box);
     update();
+    saveToLocal();
 }
 function deleteBox(){
     if(!selectedBox) return;
@@ -64,12 +66,13 @@ function deleteBox(){
     treeLinks=treeLinks.filter(l=>l.source!==selectedBox && l.target!==selectedBox);
     selectedBox=null;
     update();
+    saveToLocal();
 }
 
 // --- Создание связи мышкой ---
 function startRightLink(d){rightDragBox=d; dragLine={x1:d.x,y1:d.y,x2:d.x,y2:d.y,source:d}; update();}
 function moveRightLink(event){if(dragLine){const pt=d3.pointer(event); dragLine.x2=pt[0]; dragLine.y2=pt[1]; update();}}
-function endRightLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; rightDragBox=null; update();}
+function endRightLink(d){if(dragLine && dragLine.source!==d){treeLinks.push({source:dragLine.source,target:d});} dragLine=null; rightDragBox=null; update(); saveToLocal();}
 
 // --- Сохранение/Загрузка JSON ---
 function saveJSON(){
@@ -101,11 +104,36 @@ function loadJSON(){
                     treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});
                 }
             });
-            selectedBox=null; update();
+            selectedBox=null; update(); saveToLocal();
         };
         reader.readAsText(file);
     };
     input.click();
+}
+
+// --- Автосохранение в localStorage ---
+function saveToLocal(){
+    const data={nodes:treeNodes,links:treeLinks.map(l=>({source:l.source.id,target:l.target.id}))};
+    localStorage.setItem("treeData", JSON.stringify(data));
+}
+function loadFromLocal(){
+    const data=localStorage.getItem("treeData");
+    if(data){
+        const parsed=JSON.parse(data);
+        treeNodes=[]; treeLinks=[];
+        const nodeMap={};
+        parsed.nodes.forEach(n=>{
+            const box={id:n.id,x:n.x,y:n.y,w:n.w,h:n.h,text:n.text};
+            treeNodes.push(box);
+            nodeMap[box.id]=box;
+        });
+        parsed.links.forEach(l=>{
+            if(nodeMap[l.source] && nodeMap[l.target]){
+                treeLinks.push({source:nodeMap[l.source],target:nodeMap[l.target]});
+            }
+        });
+        selectedBox=null;
+    }
 }
 
 // --- Обновление визуализации ---
@@ -114,13 +142,11 @@ function update(){
     linkGroup.selectAll("*").remove();
     nodeGroup.selectAll("*").remove();
 
-    // линии
     treeLinks.forEach(l=>linkGroup.append("line").attr("class","line").attr("x1",l.source.x).attr("y1",l.source.y).attr("x2",l.target.x).attr("y2",l.target.y));
 
-    // боксы
     treeNodes.forEach(b=>{
         const gNode=nodeGroup.append("g")
-            .call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update();}));
+            .call(d3.drag().on("drag",e=>{b.x=e.x;b.y=e.y; update(); saveToLocal();}));
         
         gNode.append("rect")
             .attr("class","box")
@@ -138,11 +164,10 @@ function update(){
 
         gNode.on("dblclick",()=>{
             const t=prompt("Введите текст:",b.text);
-            if(t!==null){b.text=t; update();}
+            if(t!==null){b.text=t; update(); saveToLocal();}
         });
     });
 
-    // линия drag
     if(dragLine){
         linkGroup.append("line")
             .attr("x1",dragLine.x1)
@@ -158,6 +183,7 @@ function update(){
 svg.on("mousemove",moveRightLink)
    .on("mouseup",()=>{if(dragLine && rightDragBox){endRightLink(selectedBox);}});
 
+loadFromLocal();
 update();
 </script>
 </body>
