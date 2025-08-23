@@ -17,16 +17,13 @@ svg { width:100vw; height:100vh; display:block; }
 
 #menu {
   position:absolute; top:50px; left:50px;
-  background:#1f1f1f; padding:20px; border-radius:8px;
+  padding:20px; border-radius:8px;
   display:none; flex-direction:column; gap:10px; max-width:350px; z-index:10;
 }
 #menu h3 { margin:5px 0; }
 #menu input, #menu button, #menu select { padding:5px; border-radius:4px; border:none; }
-#menu button { cursor:pointer; background-color:#3b3b3b; color:#fff; }
-#menu button:hover { background-color:#555; }
-
+#menu button { cursor:pointer; }
 .tooltip { position:absolute; background:#333; color:#fff; padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none; opacity:0; transition:0.2s; }
-
 .highlight { stroke:#ff0 !important; stroke-width:3px !important; }
 </style>
 </head>
@@ -91,6 +88,17 @@ const width = window.innerWidth, height = window.innerHeight;
 const g = svg.append("g");
 const tooltip = d3.select("#tooltip");
 
+// ---------- Загрузка из localStorage ----------
+const savedData = localStorage.getItem('mapData');
+if(savedData){
+    try{
+        const data = JSON.parse(savedData);
+        nodes = data.nodes || [];
+        links = data.links || [];
+        darkTheme = data.darkTheme ?? true;
+    } catch(e){ console.warn("Ошибка загрузки сохраненной сессии", e); }
+}
+
 const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d=>d.id).distance(150))
     .force("charge", d3.forceManyBody().strength(-500))
@@ -108,19 +116,44 @@ function toggleMenu(){
     menu.style.display = (menu.style.display==="flex") ? "none" : "flex";
 }
 
+function updateMenuTheme(){
+    const bgColor = darkTheme ? "#1f1f1f" : "#f0f0f0";
+    const textColor = darkTheme ? "#fff" : "#000";
+    const inputBg = darkTheme ? "#333" : "#fff";
+    const inputColor = darkTheme ? "#fff" : "#000";
+    const buttonBg = darkTheme ? "#3b3b3b" : "#ddd";
+    const buttonHover = darkTheme ? "#555" : "#bbb";
+
+    const menu = document.getElementById("menu");
+    menu.style.backgroundColor = bgColor;
+    menu.style.color = textColor;
+
+    menu.querySelectorAll("input").forEach(el => {
+        el.style.backgroundColor = inputBg;
+        el.style.color = inputColor;
+        el.style.border = darkTheme ? "none" : "1px solid #aaa";
+    });
+    menu.querySelectorAll("button").forEach(el => {
+        el.style.backgroundColor = buttonBg;
+        el.style.color = textColor;
+        el.onmouseover = () => el.style.backgroundColor = buttonHover;
+        el.onmouseout = () => el.style.backgroundColor = buttonBg;
+    });
+}
+
 // ---------- Узлы и связи ----------
 function addNode(){
     const name=document.getElementById("nodeName").value.trim();
     const group=document.getElementById("nodeGroup").value.trim();
     if(!name || nodes.find(n=>n.id===name)) return;
     nodes.push({id:name, group:group, x:width/2+Math.random()*100-50, y:height/2+Math.random()*100-50});
-    update();
+    saveSession(); update();
 }
 function deleteNode(){
     const name=document.getElementById("deleteNodeName").value.trim();
     nodes=nodes.filter(n=>n.id!==name);
     links=links.filter(l=>l.source.id!==name && l.target.id!==name);
-    update();
+    saveSession(); update();
 }
 function addLink(){
     const source=document.getElementById("sourceNode").value.trim();
@@ -130,20 +163,22 @@ function addLink(){
     const sNode=nodes.find(n=>n.id===source), tNode=nodes.find(n=>n.id===target);
     if(!sNode || !tNode) return;
     links.push({source:sNode, target:tNode, weight:weight});
-    update();
+    saveSession(); update();
 }
 
-// ---------- Поиск ----------
+// ---------- Поиск с центрированием ----------
 function searchNode(){
     const name=document.getElementById("searchNode").value.trim();
     if(!name) return;
     const node=nodeGroup.selectAll("circle").filter(d=>d.id===name);
     if(!node.empty()){
         simulation.alpha(1).restart();
+        const nodeData = node.datum();
         const transform=d3.zoomTransform(svg.node());
-        const x=transform.x + width/2 - node.datum().x*transform.k;
-        const y=transform.y + height/2 - node.datum().y*transform.k;
-        svg.transition().duration(750).call(zoom.transform,d3.zoomIdentity.translate(x,y).scale(transform.k));
+        const scale = transform.k;
+        const x = width/2 - nodeData.x*scale;
+        const y = height/2 - nodeData.y*scale;
+        svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(x,y).scale(scale));
         node.classed("highlight",true);
         setTimeout(()=>node.classed("highlight",false),2000);
     }
@@ -152,9 +187,11 @@ function searchNode(){
 // ---------- Темная / светлая тема ----------
 function toggleTheme(){
     darkTheme=!darkTheme;
-    svg.style("background-color",darkTheme?"#121212":"#f0f0f0");
-    nodeGroup.selectAll("text").attr("fill", darkTheme?"#fff":"#000");
-    linkGroup.selectAll("line").attr("stroke", darkTheme?"#888":"#555");
+    svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
+    nodeGroup.selectAll("text").attr("fill", darkTheme ? "#fff" : "#000");
+    linkGroup.selectAll("line").attr("stroke", darkTheme ? "#888" : "#555");
+    updateMenuTheme();
+    saveSession();
 }
 
 // ---------- Обновление ----------
@@ -196,13 +233,16 @@ function update(){
     simulation.alpha(1).restart();
 }
 
-// ---------- Tick ----------
+// ---------- Tick с масштабированием текста ----------
 function ticked(){
     linkGroup.selectAll("line")
         .attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
         .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
     nodeGroup.selectAll("circle").attr("cx",d=>d.x).attr("cy",d=>d.y);
-    nodeGroup.selectAll("text").attr("x",d=>d.x).attr("y",d=>d.y-25);
+    nodeGroup.selectAll("text")
+        .attr("x",d=>d.x)
+        .attr("y",d=>d.y-25)
+        .attr("font-size", 10 / d3.zoomTransform(svg.node()).k);
 }
 
 // ---------- Drag ----------
@@ -215,8 +255,8 @@ function drag(sim){
 
 // ---------- JSON / PNG ----------
 function downloadJSON(){const dataStr=JSON.stringify({nodes:nodes,links:links},null,2); const blob=new Blob([dataStr],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
-function loadJSON(){const fileInput=document.getElementById("fileInput"); if(fileInput.files.length===0) return; const reader=new FileReader(); reader.onload=function(e){try{const data=JSON.parse(e.target.result); nodes=data.nodes||[]; links=data.links||[]; resetView(); update();}catch(err){alert("Ошибка загрузки файла:"+err);}}; reader.readAsText(fileInput.files[0]);}
-function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); cloneSvg.querySelector("g").removeAttribute("transform"); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas"); canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(svgBlob); img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
+function loadJSON(){const fileInput=document.getElementById("fileInput"); if(fileInput.files.length===0) return; const reader=new FileReader(); reader.onload=function(e){try{const data=JSON.parse(e.target.result); nodes=data.nodes||[]; links=data.links||[]; resetView(); saveSession(); update();}catch(err){alert("Ошибка загрузки файла:"+err);}}; reader.readAsText(fileInput.files[0]);}
+function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); cloneSvg.querySelector("g").removeAttribute("transform"); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas"); canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(svgBlob); img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; ctx.fillRect(0,0,canvas.width, canvas.height); ctx.drawImage(img,0,0); URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
 
 // ---------- Управление видом ----------
 function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
@@ -227,6 +267,17 @@ window.addEventListener("resize",()=>{
     simulation.force("center",d3.forceCenter(window.innerWidth/2, window.innerHeight/2));
     simulation.alpha(1).restart();
 });
+
+// ---------- Сохранение сессии ----------
+function saveSession(){
+    const data={nodes:nodes, links:links, darkTheme:darkTheme};
+    localStorage.setItem('mapData', JSON.stringify(data));
+}
+
+// ---------- Инициализация ----------
+svg.style("background-color", darkTheme ? "#121212" : "#f0f0f0");
+updateMenuTheme();
+update();
 </script>
 </body>
 </html>
