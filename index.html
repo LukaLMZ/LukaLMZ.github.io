@@ -126,13 +126,13 @@ function update(){
             .attr("r",n.r)
             .attr("fill",n.color)
             .call(d3.drag()
-                .on("start",()=>{selectedNode=n; update();})
-                .on("drag", (event)=>{n.x=event.x; n.y=event.y; update(); saveToLocal();})
+                .on("start",(event)=>{selectedNode=n; update();})
+                .on("drag",(event)=>{n.x=event.x; n.y=event.y; update(); saveToLocal();}) // Узел под мышкой
             )
             .on("mouseover", ()=>{tooltip.style("display","block").text(n.text);})
             .on("mousemove", (event)=>{tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px");})
             .on("mouseout", ()=>{tooltip.style("display","none");})
-            .on("dblclick", ()=>{const t=prompt("Введите текст узла:", n.text); if(t!==null){n.text=t; document.getElementById("nodeText").value=t; update(); saveToLocal();}} )
+            .on("dblclick", ()=>{const t=prompt("Введите текст узла:", n.text); if(t!==null){n.text=t; document.getElementById("nodeText").value=t; update(); saveToLocal();}})
             .on("mousedown", (event)=>{
                 if(event.button===2){creatingLink=true; tempLink={source:n,x1:n.x,y1:n.y,x2:n.x,y2:n.y}; update();}
             });
