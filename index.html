@@ -28,10 +28,13 @@ svg{width:100vw;height:100vh;display:block;}
 <button onclick="addNode()">Добавить узел</button>
 <button onclick="deleteNode()">Удалить выбранный узел</button>
 <button onclick="deleteLink()">Удалить выбранную связь</button>
-<label>Цвет узла:</label>
-<input type="color" id="nodeColor" value="#00ffff" onchange="changeNodeColor()">
+
+<label id="labelColor" style="display:none;">Цвет узла:</label>
+<input type="color" id="nodeColor" style="display:none;" onchange="changeNodeColor()">
+
 <label>Текст узла:</label>
 <input type="text" id="nodeText" placeholder="Введите текст" oninput="editNodeText()">
+
 <h4>Поиск</h4>
 <input type="text" id="searchInput" placeholder="Поиск по тексту">
 <button onclick="searchNode()">Найти</button>
@@ -58,11 +61,11 @@ document.addEventListener("contextmenu", e => e.preventDefault());
 
 // --- Меню ---
 function toggleMenu(){const menu=document.getElementById("menu"); menu.style.display=(menu.style.display==="flex")?"none":"flex";}
-function showHelp(){alert("Использование:\n- Добавление узла: кнопка 'Добавить узел'\n- Удаление узла: кнопка 'Удалить выбранный узел'\n- Создание связи: удержание правой кнопки мыши на узле и drag к другому\n- Удаление связи: выбрать связь и нажать 'Удалить связь'\n- Изменение текста узла: ввод в поле 'Текст узла'\n- Изменение цвета: через поле 'Цвет узла'\n- Поиск: ввод текста и 'Найти'\n- Центрирование и масштабирование карты: drag и колесо мыши\n- Экспорт/Импорт JSON и PNG\n- Подсказки при наведении на узел")}
+function showHelp(){alert("Использование:\n- Добавление узла: кнопка 'Добавить узел'\n- Удаление узла: кнопка 'Удалить выбранный узел'\n- Создание связи: удержание правой кнопки мыши на узле и drag к другому\n- Удаление связи: выбрать связь и нажать 'Удалить связь'\n- Изменение текста узла: ввод в поле 'Текст узла'\n- Изменение цвета: через поле 'Цвет узла' (появляется при выборе узла)\n- Поиск: ввод текста и 'Найти'\n- Центрирование и масштабирование карты: drag и колесо мыши\n- Экспорт/Импорт JSON и PNG\n- Подсказки при наведении на узел")}
 
 // --- Узлы ---
 function addNode(){const node={id:"n"+(nodes.length+1),x:width/2+Math.random()*100-50,y:height/2+Math.random()*100-50,r:15,color:"#00ffff",text:""}; nodes.push(node); update(); saveToLocal();}
-function deleteNode(){if(!selectedNode) return; links=links.filter(l=>l.source!==selectedNode && l.target!==selectedNode); nodes=nodes.filter(n=>n!==selectedNode); selectedNode=null; update(); saveToLocal();}
+function deleteNode(){if(!selectedNode) return; links=links.filter(l=>l.source!==selectedNode && l.target!==selectedNode); nodes=nodes.filter(n=>n!==selectedNode); deselectNode(); update(); saveToLocal();}
 function editNodeText(){if(selectedNode) {selectedNode.text=document.getElementById("nodeText").value; update(); saveToLocal();}}
 function changeNodeColor(){if(selectedNode){selectedNode.color=document.getElementById("nodeColor").value; update(); saveToLocal();}}
 
@@ -84,17 +87,34 @@ function searchNode(){
     } else {alert("Узел не найден");}
 }
 
+// --- Выделение/снятие выделения ---
+function selectNode(node){
+    selectedNode=node;
+    update();
+    document.getElementById("nodeText").value=node.text;
+    const colorInput=document.getElementById("nodeColor");
+    colorInput.value=node.color;
+    colorInput.style.display="block"; // показываем кнопку цвета
+    document.getElementById("labelColor").style.display="block";
+}
+function deselectNode(){
+    selectedNode=null;
+    update();
+    document.getElementById("nodeColor").style.display="none";
+    document.getElementById("labelColor").style.display="none";
+}
+
 // --- Центрирование карты ---
 function centerMap(){const scale=d3.zoomTransform(svg.node()).k; svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity.translate(width/2,height/2).scale(scale));}
 
 // --- Сохранение/Загрузка ---
 function saveJSON(){const data={nodes:nodes,links:links.map(l=>({source:l.source.id,target:l.target.id}))}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url;a.download="network.json";a.click();URL.revokeObjectURL(url);}
-function loadJSON(){const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=e=>{const file=e.target.files[0]; const reader=new FileReader(); reader.onload=function(ev){const data=JSON.parse(ev.target.result); nodes=[]; links=[]; const map={}; data.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); data.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); selectedNode=null; selectedLink=null; update(); saveToLocal();}; reader.readAsText(file);}; input.click();}
+function loadJSON(){const input=document.createElement("input"); input.type="file"; input.accept=".json"; input.onchange=e=>{const file=e.target.files[0]; const reader=new FileReader(); reader.onload=function(ev){const data=JSON.parse(ev.target.result); nodes=[]; links=[]; const map={}; data.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); data.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); deselectNode(); update(); saveToLocal();}; reader.readAsText(file);}; input.click();}
 function exportPNG(){const serializer=new XMLSerializer(); const source=serializer.serializeToString(svg.node()); const image=new Image(); image.onload=function(){const canvas=document.createElement("canvas"); canvas.width=width; canvas.height=height; const ctx=canvas.getContext("2d"); ctx.fillStyle="#121212"; ctx.fillRect(0,0,width,height); ctx.drawImage(image,0,0); const link=document.createElement("a"); link.download="network.png"; link.href=canvas.toDataURL("image/png"); link.click();}; image.src='data:image/svg+xml;base64,'+btoa(source);}
 
 // --- Автосохранение ---
 function saveToLocal(){const data={nodes:nodes,links:links.map(l=>({source:l.source.id,target:l.target.id}))}; localStorage.setItem("networkData",JSON.stringify(data));}
-function loadFromLocal(){const data=localStorage.getItem("networkData"); if(data){const parsed=JSON.parse(data); nodes=[]; links=[]; const map={}; parsed.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); parsed.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); update();}}
+function loadFromLocal(){const data=localStorage.getItem("networkData"); if(data){const parsed=JSON.parse(data); nodes=[]; links=[]; const map={}; parsed.nodes.forEach(n=>{nodes.push({...n}); map[n.id]=nodes[nodes.length-1];}); parsed.links.forEach(l=>{if(map[l.source] && map[l.target]) links.push({source:map[l.source],target:map[l.target]});}); deselectNode(); update();}}
 
 // --- Визуализация ---
 const linkGroup=g.append("g"), nodeGroup=g.append("g");
@@ -113,7 +133,7 @@ function update(){
             .attr("y1",l.source.y)
             .attr("x2",l.target.x)
             .attr("y2",l.target.y)
-            .on("mousedown", event=>{if(event.button===0){selectedLink=l; selectedNode=null; update();}})
+            .on("mousedown", event=>{if(event.button===0){selectedLink=l; deselectNode(); update();}})
     });
 
     nodes.forEach(n=>{
@@ -126,8 +146,8 @@ function update(){
             .attr("r",n.r)
             .attr("fill",n.color)
             .call(d3.drag()
-                .on("start",(event)=>{selectedNode=n; update();})
-                .on("drag",(event)=>{n.x=event.x; n.y=event.y; update(); saveToLocal();}) // Узел под мышкой
+                .on("start",(event)=>{selectNode(n);})
+                .on("drag",(event)=>{n.x=event.x; n.y=event.y; update(); saveToLocal();})
             )
             .on("mouseover", ()=>{tooltip.style("display","block").text(n.text);})
             .on("mousemove", (event)=>{tooltip.style("left",(event.pageX+10)+"px").style("top",(event.pageY+10)+"px");})
@@ -139,7 +159,10 @@ function update(){
 
         if(n===selectedNode){
             document.getElementById("nodeText").value=n.text;
-            document.getElementById("nodeColor").value=n.color;
+            const colorInput=document.getElementById("nodeColor");
+            colorInput.value=n.color;
+            colorInput.style.display="block";
+            document.getElementById("labelColor").style.display="block";
         }
     });
 
@@ -154,7 +177,7 @@ function update(){
     }
 }
 
-// --- Drag для правой кнопки (создание связи) ---
+// --- Drag правой кнопкой (создание связи) ---
 svg.on("mousemove", (event)=>{
     if(creatingLink && tempLink){tempLink.x2=event.offsetX; tempLink.y2=event.offsetY; update();}
 }).on("mouseup", (event)=>{
