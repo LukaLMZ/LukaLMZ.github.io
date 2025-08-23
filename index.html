@@ -94,8 +94,16 @@ if(savedData){
     try{
         const data = JSON.parse(savedData);
         nodes = data.nodes || [];
-        links = data.links || [];
         darkTheme = data.darkTheme ?? true;
+
+        // Восстанавливаем связи с объектами узлов
+        links = (data.links || []).map(l => {
+            const s = nodes.find(n => n.id === (l.source.id || l.source));
+            const t = nodes.find(n => n.id === (l.target.id || l.target));
+            if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
+            return null;
+        }).filter(l => l !== null);
+
     } catch(e){ console.warn("Ошибка загрузки сохраненной сессии", e); }
 }
 
@@ -254,9 +262,61 @@ function drag(sim){
 }
 
 // ---------- JSON / PNG ----------
-function downloadJSON(){const dataStr=JSON.stringify({nodes:nodes,links:links},null,2); const blob=new Blob([dataStr],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();}
-function loadJSON(){const fileInput=document.getElementById("fileInput"); if(fileInput.files.length===0) return; const reader=new FileReader(); reader.onload=function(e){try{const data=JSON.parse(e.target.result); nodes=data.nodes||[]; links=data.links||[]; resetView(); saveSession(); update();}catch(err){alert("Ошибка загрузки файла:"+err);}}; reader.readAsText(fileInput.files[0]);}
-function downloadPNG(){const serializer=new XMLSerializer(); const cloneSvg=svg.node().cloneNode(true); cloneSvg.querySelector("g").removeAttribute("transform"); const svgString=serializer.serializeToString(cloneSvg); const canvas=document.createElement("canvas"); canvas.width=svg.clientWidth; canvas.height=svg.clientHeight; const ctx=canvas.getContext("2d"); const img=new Image(); const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); const url=URL.createObjectURL(svgBlob); img.onload=function(){ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; ctx.fillRect(0,0,canvas.width, canvas.height); ctx.drawImage(img,0,0); URL.revokeObjectURL(url); const a=document.createElement("a"); a.download="map.png"; a.href=canvas.toDataURL("image/png"); a.click();}; img.src=url;}
+function downloadJSON(){
+    const dataStr=JSON.stringify({nodes:nodes,links:links},null,2); 
+    const blob=new Blob([dataStr],{type:"application/json"}); 
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="map.json"; a.click();
+}
+
+function loadJSON(){
+    const fileInput=document.getElementById("fileInput"); 
+    if(fileInput.files.length===0) return; 
+    const reader=new FileReader(); 
+    reader.onload=function(e){
+        try{
+            const data=JSON.parse(e.target.result);
+            nodes = data.nodes || [];
+            // Восстанавливаем связи с объектами узлов
+            links = (data.links || []).map(l => {
+                const s = nodes.find(n => n.id === (l.source.id || l.source));
+                const t = nodes.find(n => n.id === (l.target.id || l.target));
+                if(s && t) return {source: s, target: t, weight: l.weight ?? 1};
+                return null;
+            }).filter(l => l !== null);
+            resetView();
+            saveSession();
+            update();
+        } catch(err){
+            alert("Ошибка загрузки файла:"+err);
+        }
+    }; 
+    reader.readAsText(fileInput.files[0]);
+}
+
+function downloadPNG(){
+    const serializer=new XMLSerializer(); 
+    const cloneSvg=svg.node().cloneNode(true); 
+    cloneSvg.querySelector("g").removeAttribute("transform"); 
+    const svgString=serializer.serializeToString(cloneSvg); 
+    const canvas=document.createElement("canvas"); 
+    canvas.width=svg.clientWidth; 
+    canvas.height=svg.clientHeight; 
+    const ctx=canvas.getContext("2d"); 
+    const img=new Image(); 
+    const svgBlob=new Blob([svgString],{type:"image/svg+xml;charset=utf-8"}); 
+    const url=URL.createObjectURL(svgBlob); 
+    img.onload=function(){
+        ctx.fillStyle=darkTheme?"#121212":"#f0f0f0"; 
+        ctx.fillRect(0,0,canvas.width, canvas.height); 
+        ctx.drawImage(img,0,0); 
+        URL.revokeObjectURL(url); 
+        const a=document.createElement("a"); 
+        a.download="map.png"; 
+        a.href=canvas.toDataURL("image/png"); 
+        a.click();
+    }; 
+    img.src=url;
+}
 
 // ---------- Управление видом ----------
 function resetView(){ svg.transition().duration(500).call(zoom.transform,d3.zoomIdentity); }
